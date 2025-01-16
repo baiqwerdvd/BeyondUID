@@ -154,6 +154,9 @@ async def check_update() -> UpdateCheckResult:
                     old=base_launcher_version, new=launcher_version
                 )
 
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2)
+
     assert network_config_update
     assert game_config_update
     assert res_version_update
