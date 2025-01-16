@@ -102,7 +102,7 @@ async def unsub_ann_(bot: Bot, ev: Event):
     return await bot.send("未曾订阅终末地公告！")
 
 
-@scheduler.scheduled_job("interval", minutes=ann_minute_check)
+@scheduler.scheduled_job("interval", minutes=ann_minute_check, id="byd check ann")
 async def check_ark_ann():
     logger.info("[终末地公告] 定时任务: 终末地公告查询..")
 

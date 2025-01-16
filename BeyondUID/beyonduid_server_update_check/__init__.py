@@ -4,6 +4,8 @@ import random
 from typing import Any
 
 import aiohttp
+from msgspec import Struct, convert
+
 from gsuid_core.aps import scheduler
 from gsuid_core.bot import Bot
 from gsuid_core.data_store import get_res_path
@@ -11,7 +13,6 @@ from gsuid_core.logger import logger
 from gsuid_core.models import Event
 from gsuid_core.subscribe import gs_subscribe
 from gsuid_core.sv import SV
-from msgspec import Struct, convert
 
 from ..beyonduid_config import PREFIX
 
@@ -131,11 +132,15 @@ async def check_update() -> UpdateCheckResult:
             case "game_config":
                 game_config = convert(data, dict[str, Any])
                 base_game_config = convert(base_data, dict[str, Any])
-                game_config_update = GameConfigUpdate(old=base_game_config, new=game_config)
+                game_config_update = GameConfigUpdate(
+                    old=base_game_config, new=game_config
+                )
             case "res_version":
                 res_version = convert(data, ResVersion)
                 base_res_version = convert(base_data, ResVersion)
-                res_version_update = ResVersionUpdate(old=base_res_version, new=res_version)
+                res_version_update = ResVersionUpdate(
+                    old=base_res_version, new=res_version
+                )
             case "server_config":
                 server_config = convert(data, ServerConfig)
                 base_server_config = convert(base_data, ServerConfig)
@@ -198,7 +203,7 @@ async def sub_ann_(bot: Bot, ev: Event):
     await bot.send("成功订阅终末地版本更新!")
 
 
-@scheduler.scheduled_job("interval", seconds=2, id="check update")
+@scheduler.scheduled_job("interval", seconds=2, id="byd check update")
 async def match_checker():
     logger.info("Checking for Beyond client update")
 
