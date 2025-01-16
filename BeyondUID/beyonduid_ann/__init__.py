@@ -103,7 +103,7 @@ async def unsub_ann_(bot: Bot, ev: Event):
 
 
 @scheduler.scheduled_job("interval", minutes=ann_minute_check, id="byd check ann")
-async def check_ark_ann():
+async def check_byd_ann():
     logger.info("[终末地公告] 定时任务: 终末地公告查询..")
 
     updates = await check_bulletin_update()

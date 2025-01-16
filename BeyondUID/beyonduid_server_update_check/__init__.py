@@ -204,7 +204,7 @@ async def sub_ann_(bot: Bot, ev: Event):
 
 
 @scheduler.scheduled_job("interval", seconds=2, id="byd check update")
-async def match_checker():
+async def byd_client_update_checker():
     logger.info("Checking for Beyond client update")
 
     result = await check_update()
