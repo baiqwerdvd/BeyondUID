@@ -70,8 +70,8 @@ class LauncherVersion(Struct):
     action: int
     version: str
     request_version: str
-    pkg: dict[str, Any]
-    patch: Any
+    pkg: dict[str, Any] | None = None
+    patch: dict[str, Any] | None = None
 
 
 class LauncherVersionUpdate(Struct):
