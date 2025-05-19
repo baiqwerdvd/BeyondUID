@@ -156,7 +156,10 @@ async def check_update(target_platform: Literal["Android", "Windows"]) -> Update
                     )
                 except Exception as e:
                     logger.error(f"Error parsing server config: {e}")
-                    server_config_update = None
+                    server_config_update = ServerConfigUpdate(
+                        old=ServerConfig(addr="", port=0),
+                        new=ServerConfig(addr="", port=0),
+                    )
             case "launcher_version":
                 launcher_version = convert(data, LauncherVersion)
                 base_launcher_version = convert(base_data, LauncherVersion)
