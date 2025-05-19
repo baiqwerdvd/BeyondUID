@@ -138,16 +138,18 @@ async def check_update(target_platform: Literal["Android", "default"]) -> Update
             case "network_config":
                 network_config = convert(data, dict[str, Any])
                 base_network_config = convert(base_data, dict[str, Any])
-                if network_config.get("code") == 404:
+                if network_config.get("code") == 404 and base_network_config.get("code") == 404:
+                    network_config_update = NetworkConfigUpdate(old={}, new={})
+                elif network_config.get("code") == 404:
                     data = base_data
                     network_config = base_network_config
                     network_config_update = NetworkConfigUpdate(
                         old=base_network_config, new=base_network_config
                     )
-                    continue
-                network_config_update = NetworkConfigUpdate(
-                    old=base_network_config, new=network_config
-                )
+                else:
+                    network_config_update = NetworkConfigUpdate(
+                        old=base_network_config, new=network_config
+                    )
             case "game_config":
                 game_config = convert(data, dict[str, Any])
                 base_game_config = convert(base_data, dict[str, Any])
@@ -395,16 +397,10 @@ async def byd_client_update_checker():
                 ]
             )
             msg += "\nDelete Keys:\n" + "\n".join(
-                [
-                    f"{key}: {result.network_config.old.get(key)}"
-                    for key in delete_keys
-                ]
+                [f"{key}: {result.network_config.old.get(key)}" for key in delete_keys]
             )
             msg += "\nNew Keys:\n" + "\n".join(
-                [
-                    f"{key}: {result.network_config.new.get(key)}"
-                    for key in new_keys
-                ]
+                [f"{key}: {result.network_config.new.get(key)}" for key in new_keys]
             )
             await subscribe.send(
                 f"检测到Android端终末地网络配置更新\n{msg}",
