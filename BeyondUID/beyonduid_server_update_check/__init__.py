@@ -4,6 +4,7 @@ import random
 from enum import StrEnum
 from typing import Any, Literal
 
+import aiofiles
 import aiohttp
 from gsuid_core.aps import scheduler
 from gsuid_core.bot import Bot
@@ -126,11 +127,12 @@ async def check_update(target_platform: Literal["Android", "default"]) -> Update
 
         path = get_res_path("BeyondUID") / f"{key}_{target_platform}.json"
         if not path.exists():
-            with open(path, "w", encoding="utf-8") as f:
-                json.dump(data, f, indent=2)
+            async with aiofiles.open(path, "w", encoding="utf-8") as f:
+                await f.write(json.dumps(data, indent=2))
 
-        with open(path, encoding="utf-8") as f:
-            base_data = json.load(f)
+        async with aiofiles.open(path, encoding="utf-8") as f:
+            base_data = await f.read()
+            base_data = json.loads(base_data)
 
         match key:
             case "network_config":
@@ -166,8 +168,8 @@ async def check_update(target_platform: Literal["Android", "default"]) -> Update
                     old=base_launcher_version, new=launcher_version
                 )
 
-        with open(path, "w", encoding="utf-8") as f:
-            json.dump(data, f, indent=2)
+        async with aiofiles.open(path, "w", encoding="utf-8") as f:
+            await f.write(json.dumps(data, indent=2))
 
     assert network_config_update
     assert game_config_update
