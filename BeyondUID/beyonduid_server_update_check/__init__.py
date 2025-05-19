@@ -233,6 +233,7 @@ async def byd_client_update_checker():
     logger.info("Checking for Beyond client update")
 
     for target_platform in ["Android", "default"]:
+        logger.info(f"Checking for {target_platform} update")
         result = await check_update(target_platform)
         if (
             not result.res_updated
