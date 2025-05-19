@@ -102,7 +102,7 @@ class UpdateCheckResult(Struct):
     client_updated: bool = False
 
 
-async def check_update(target_platform: Literal["Android", "Windows"]) -> UpdateCheckResult:
+async def check_update(target_platform: Literal["Android", "default"]) -> UpdateCheckResult:
     """
     check if there is an update
 
@@ -197,9 +197,9 @@ async def get_latest_version(bot: Bot, ev: Event):
     )
 
 
-@sv_server_check.on_command("取Windows端终末地最新版本")
+@sv_server_check.on_command("取终末地最新版本")
 async def get_latest_version_win(bot: Bot, ev: Event):
-    result = await check_update("Windows")
+    result = await check_update("default")
     await bot.send(
         f"clientVersion: {result.launcher_version.new.version}\nresVersion: {result.res_version.new.version}"
     )
@@ -226,11 +226,11 @@ async def sub_ann_(bot: Bot, ev: Event):
     await bot.send("成功订阅终末地版本更新!")
 
 
-@scheduler.scheduled_job("interval", seconds=2, id="byd check update")
+@scheduler.scheduled_job("interval", seconds=5, id="byd check update")
 async def byd_client_update_checker():
     logger.info("Checking for Beyond client update")
 
-    for target_platform in ["Android", "Windows"]:
+    for target_platform in ["Android", "default"]:
         result = await check_update(target_platform)
         if (
             not result.res_updated
@@ -256,7 +256,7 @@ async def byd_client_update_checker():
                             f"检测到Android端终末地客户端版本更新\nclientVersion: {result.launcher_version.old.version} -> {result.launcher_version.new.version}\nresVersion: {result.res_version.new.version}",
                         )
                         await asyncio.sleep(random.uniform(1, 3))
-                    case "Windows":
+                    case "default":
                         await subscribe.send(
                             f"检测到Windows端终末地客户端版本更新\nclientVersion: {result.launcher_version.old.version} -> {result.launcher_version.new.version}\nresVersion: {result.res_version.new.version}",
                         )
@@ -269,7 +269,7 @@ async def byd_client_update_checker():
                             f"检测到Android端终末地资源版本更新\nresVersion: {result.res_version.old.version} -> {result.res_version.new.version}",
                         )
                         await asyncio.sleep(random.uniform(1, 3))
-                    case "Windows":
+                    case "default":
                         await subscribe.send(
                             f"检测到Windows端终末地资源版本更新\nresVersion: {result.res_version.old.version} -> {result.res_version.new.version}",
                         )
@@ -282,7 +282,7 @@ async def byd_client_update_checker():
                             f"检测到Android端终末地服务器配置更新\naddr: {result.server_config.old.addr} -> {result.server_config.new.addr}\nport: {result.server_config.old.port} -> {result.server_config.new.port}",
                         )
                         await asyncio.sleep(random.uniform(1, 3))
-                    case "Windows":
+                    case "default":
                         await subscribe.send(
                             f"检测到Windows端终末地服务器配置更新\naddr: {result.server_config.old.addr} -> {result.server_config.new.addr}\nport: {result.server_config.old.port} -> {result.server_config.new.port}",
                         )
@@ -308,7 +308,7 @@ async def byd_client_update_checker():
                             f"检测到Android端终末地游戏配置更新\n{msg}",
                         )
                         await asyncio.sleep(random.uniform(1, 3))
-                    case "Windows":
+                    case "default":
                         await subscribe.send(
                             f"检测到Windows端终末地游戏配置更新\n{msg}",
                         )
@@ -334,7 +334,7 @@ async def byd_client_update_checker():
                             f"检测到Android端终末地网络配置更新\n{msg}",
                         )
                         await asyncio.sleep(random.uniform(1, 3))
-                    case "Windows":
+                    case "default":
                         await subscribe.send(
                             f"检测到Windows端终末地网络配置更新\n{msg}",
                         )
