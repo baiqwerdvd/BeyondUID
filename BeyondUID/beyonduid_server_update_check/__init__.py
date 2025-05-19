@@ -148,11 +148,15 @@ async def check_update(target_platform: Literal["Android", "Windows"]) -> Update
                 base_res_version = convert(base_data, ResVersion)
                 res_version_update = ResVersionUpdate(old=base_res_version, new=res_version)
             case "server_config":
-                server_config = convert(data, ServerConfig)
-                base_server_config = convert(base_data, ServerConfig)
-                server_config_update = ServerConfigUpdate(
-                    old=base_server_config, new=server_config
-                )
+                try:
+                    server_config = convert(data, ServerConfig)
+                    base_server_config = convert(base_data, ServerConfig)
+                    server_config_update = ServerConfigUpdate(
+                        old=base_server_config, new=server_config
+                    )
+                except Exception as e:
+                    logger.error(f"Error parsing server config: {e}")
+                    server_config_update = None
             case "launcher_version":
                 launcher_version = convert(data, LauncherVersion)
                 base_launcher_version = convert(base_data, LauncherVersion)
