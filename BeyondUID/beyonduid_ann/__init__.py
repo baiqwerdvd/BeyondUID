@@ -2,8 +2,6 @@ import asyncio
 import random
 
 import aiohttp
-from msgspec import convert
-
 from gsuid_core.aps import scheduler
 from gsuid_core.bot import Bot
 from gsuid_core.logger import logger
@@ -11,6 +9,7 @@ from gsuid_core.models import Event
 from gsuid_core.segment import MessageSegment
 from gsuid_core.subscribe import gs_subscribe
 from gsuid_core.sv import SV
+from msgspec import convert
 
 from ..beyonduid_config import PREFIX, BydConfig
 from .draw_img import get_ann_img
