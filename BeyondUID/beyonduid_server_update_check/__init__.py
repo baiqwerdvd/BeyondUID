@@ -138,6 +138,13 @@ async def check_update(target_platform: Literal["Android", "default"]) -> Update
             case "network_config":
                 network_config = convert(data, dict[str, Any])
                 base_network_config = convert(base_data, dict[str, Any])
+                if network_config.get("code") == 404:
+                    data = base_data
+                    network_config = base_network_config
+                    network_config_update = NetworkConfigUpdate(
+                        old=base_network_config, new=base_network_config
+                    )
+                    continue
                 network_config_update = NetworkConfigUpdate(
                     old=base_network_config, new=network_config
                 )
@@ -369,16 +376,34 @@ async def byd_client_update_checker():
         elif result.network_config_updated:
             logger.warning("检测到终末地网络配置更新")
             update_keys = set()
+            delete_keys = set()
+            new_keys = set()
             for key, value in result.network_config.new.items():
                 if key not in result.network_config.old:
-                    update_keys.add(key)
+                    new_keys.add(key)
                     continue
                 if value != result.network_config.old[key]:
                     update_keys.add(key)
-            msg = "\n".join(
+                    continue
+            for key, value in result.network_config.old.items():
+                if key not in result.network_config.new:
+                    delete_keys.add(key)
+            msg = "Update Keys:\n" + "\n".join(
                 [
                     f"{key}: {result.network_config.old.get(key)} -> {result.network_config.new.get(key)}"
                     for key in update_keys
+                ]
+            )
+            msg += "\nDelete Keys:\n" + "\n".join(
+                [
+                    f"{key}: {result.network_config.old.get(key)}"
+                    for key in delete_keys
+                ]
+            )
+            msg += "\nNew Keys:\n" + "\n".join(
+                [
+                    f"{key}: {result.network_config.new.get(key)}"
+                    for key in new_keys
                 ]
             )
             await subscribe.send(
