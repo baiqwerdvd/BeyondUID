@@ -228,120 +228,161 @@ async def sub_ann_(bot: Bot, ev: Event):
     await bot.send("成功订阅终末地版本更新!")
 
 
-@scheduler.scheduled_job("interval", seconds=5, id="byd check update")
+@scheduler.scheduled_job("interval", seconds=5, id="byd check Windows update")
+async def byd_client_update_checker_win():
+    logger.info("Checking for Windows update")
+    result = await check_update("default")
+    if (
+        not result.res_updated
+        and not result.client_updated
+        and not result.server_config_updated
+        and not result.game_config_updated
+        and not result.network_config_updated
+    ):
+        logger.info("No update found")
+        return
+
+    datas = await gs_subscribe.get_subscribe(task_name_server_check)
+    if not datas:
+        logger.info("[终末地版本更新] 暂无群订阅")
+        return
+
+    for subscribe in datas:
+        if result.client_updated:
+            logger.warning("检测到终末地客户端版本更新")
+            await subscribe.send(
+                f"检测到Windows端终末地客户端版本更新\nclientVersion: {result.launcher_version.old.version} -> {result.launcher_version.new.version}\nresVersion: {result.res_version.new.version}",
+            )
+            await asyncio.sleep(random.uniform(1, 3))
+        elif result.res_updated:
+            logger.warning("检测到终末地资源版本更新")
+            msg = f"检测到Windows端终末地资源版本更新\nresVersion: {result.res_version.old.version} -> {result.res_version.new.version}"
+            if result.res_version.new.kickFlag != result.res_version.old.kickFlag:
+                msg += f"\nkickFlag: {result.res_version.old.kickFlag} -> {result.res_version.new.kickFlag}"
+            await subscribe.send(msg)
+            await asyncio.sleep(random.uniform(1, 3))
+        elif result.server_config_updated:
+            logger.warning("检测到终末地服务器配置更新")
+            await subscribe.send(
+                f"检测到Windows端终末地服务器配置更新\naddr: {result.server_config.old.addr} -> {result.server_config.new.addr}\nport: {result.server_config.old.port} -> {result.server_config.new.port}",
+            )
+            await asyncio.sleep(random.uniform(1, 3))
+        elif result.game_config_updated:
+            logger.warning("检测到终末地游戏配置更新")
+            update_keys = set()
+            for key, value in result.game_config.new.items():
+                if key not in result.game_config.old:
+                    update_keys.add(key)
+                    continue
+                if value != result.game_config.old[key]:
+                    update_keys.add(key)
+            msg = "\n".join(
+                [
+                    f"{key}: {result.game_config.old.get(key)} -> {result.game_config.new.get(key)}"
+                    for key in update_keys
+                ]
+            )
+            await subscribe.send(
+                f"检测到Windows端终末地游戏配置更新\n{msg}",
+            )
+            await asyncio.sleep(random.uniform(1, 3))
+        elif result.network_config_updated:
+            logger.warning("检测到终末地网络配置更新")
+            update_keys = set()
+            for key, value in result.network_config.new.items():
+                if key not in result.network_config.old:
+                    update_keys.add(key)
+                    continue
+                if value != result.network_config.old[key]:
+                    update_keys.add(key)
+            msg = "\n".join(
+                [
+                    f"{key}: {result.network_config.old.get(key)} -> {result.network_config.new.get(key)}"
+                    for key in update_keys
+                ]
+            )
+            await subscribe.send(
+                f"检测到Windows端终末地网络配置更新\n{msg}",
+            )
+            await asyncio.sleep(random.uniform(1, 3))
+    logger.info("Update check finished")
+
+
+@scheduler.scheduled_job("interval", seconds=5, id="byd check Android update")
 async def byd_client_update_checker():
-    logger.info("Checking for Beyond client update")
+    logger.info("Checking for Android update")
+    result = await check_update("Android")
+    if (
+        not result.res_updated
+        and not result.client_updated
+        and not result.server_config_updated
+        and not result.game_config_updated
+        and not result.network_config_updated
+    ):
+        logger.info("No update found")
+        return
 
-    for target_platform in ["Android", "default"]:
-        logger.info(f"Checking for {target_platform} update")
-        result = await check_update(target_platform)
-        if (
-            not result.res_updated
-            and not result.client_updated
-            and not result.server_config_updated
-            and not result.game_config_updated
-            and not result.network_config_updated
-        ):
-            logger.info("No update found")
-            return
+    datas = await gs_subscribe.get_subscribe(task_name_server_check)
+    if not datas:
+        logger.info("[终末地版本更新] 暂无群订阅")
+        return
 
-        datas = await gs_subscribe.get_subscribe(task_name_server_check)
-        if not datas:
-            logger.info("[终末地版本更新] 暂无群订阅")
-            return
-
-        for subscribe in datas:
-            if result.client_updated:
-                logger.warning("检测到终末地客户端版本更新")
-                match target_platform:
-                    case "Android":
-                        await subscribe.send(
-                            f"检测到Android端终末地客户端版本更新\nclientVersion: {result.launcher_version.old.version} -> {result.launcher_version.new.version}\nresVersion: {result.res_version.new.version}",
-                        )
-                        await asyncio.sleep(random.uniform(1, 3))
-                    case "default":
-                        await subscribe.send(
-                            f"检测到Windows端终末地客户端版本更新\nclientVersion: {result.launcher_version.old.version} -> {result.launcher_version.new.version}\nresVersion: {result.res_version.new.version}",
-                        )
-                        await asyncio.sleep(random.uniform(1, 3))
-            elif result.res_updated:
-                logger.warning("检测到终末地资源版本更新")
-                match target_platform:
-                    case "Android":
-                        msg = f"检测到Android端终末地资源版本更新\nresVersion: {result.res_version.old.version} -> {result.res_version.new.version}"
-                        if result.res_version.new.kickFlag != result.res_version.old.kickFlag:
-                            msg += f"\nkickFlag: {result.res_version.old.kickFlag} -> {result.res_version.new.kickFlag}"
-                        await subscribe.send(msg)
-                        await asyncio.sleep(random.uniform(1, 3))
-                    case "default":
-                        msg = f"检测到Windows端终末地资源版本更新\nresVersion: {result.res_version.old.version} -> {result.res_version.new.version}"
-                        if result.res_version.new.kickFlag != result.res_version.old.kickFlag:
-                            msg += f"\nkickFlag: {result.res_version.old.kickFlag} -> {result.res_version.new.kickFlag}"
-                        await subscribe.send(msg)
-                        await asyncio.sleep(random.uniform(1, 3))
-            elif result.server_config_updated:
-                logger.warning("检测到终末地服务器配置更新")
-                match target_platform:
-                    case "Android":
-                        await subscribe.send(
-                            f"检测到Android端终末地服务器配置更新\naddr: {result.server_config.old.addr} -> {result.server_config.new.addr}\nport: {result.server_config.old.port} -> {result.server_config.new.port}",
-                        )
-                        await asyncio.sleep(random.uniform(1, 3))
-                    case "default":
-                        await subscribe.send(
-                            f"检测到Windows端终末地服务器配置更新\naddr: {result.server_config.old.addr} -> {result.server_config.new.addr}\nport: {result.server_config.old.port} -> {result.server_config.new.port}",
-                        )
-                        await asyncio.sleep(random.uniform(1, 3))
-            elif result.game_config_updated:
-                logger.warning("检测到终末地游戏配置更新")
-                update_keys = set()
-                for key, value in result.game_config.new.items():
-                    if key not in result.game_config.old:
-                        update_keys.add(key)
-                        continue
-                    if value != result.game_config.old[key]:
-                        update_keys.add(key)
-                msg = "\n".join(
-                    [
-                        f"{key}: {result.game_config.old.get(key)} -> {result.game_config.new.get(key)}"
-                        for key in update_keys
-                    ]
-                )
-                match target_platform:
-                    case "Android":
-                        await subscribe.send(
-                            f"检测到Android端终末地游戏配置更新\n{msg}",
-                        )
-                        await asyncio.sleep(random.uniform(1, 3))
-                    case "default":
-                        await subscribe.send(
-                            f"检测到Windows端终末地游戏配置更新\n{msg}",
-                        )
-                        await asyncio.sleep(random.uniform(1, 3))
-            elif result.network_config_updated:
-                logger.warning("检测到终末地网络配置更新")
-                update_keys = set()
-                for key, value in result.network_config.new.items():
-                    if key not in result.network_config.old:
-                        update_keys.add(key)
-                        continue
-                    if value != result.network_config.old[key]:
-                        update_keys.add(key)
-                msg = "\n".join(
-                    [
-                        f"{key}: {result.network_config.old.get(key)} -> {result.network_config.new.get(key)}"
-                        for key in update_keys
-                    ]
-                )
-                match target_platform:
-                    case "Android":
-                        await subscribe.send(
-                            f"检测到Android端终末地网络配置更新\n{msg}",
-                        )
-                        await asyncio.sleep(random.uniform(1, 3))
-                    case "default":
-                        await subscribe.send(
-                            f"检测到Windows端终末地网络配置更新\n{msg}",
-                        )
-                        await asyncio.sleep(random.uniform(1, 3))
-        logger.info("Update check finished")
+    for subscribe in datas:
+        if result.client_updated:
+            logger.warning("检测到终末地客户端版本更新")
+            await subscribe.send(
+                f"检测到Android端终末地客户端版本更新\nclientVersion: {result.launcher_version.old.version} -> {result.launcher_version.new.version}\nresVersion: {result.res_version.new.version}",
+            )
+            await asyncio.sleep(random.uniform(1, 3))
+        elif result.res_updated:
+            logger.warning("检测到终末地资源版本更新")
+            msg = f"检测到Android端终末地资源版本更新\nresVersion: {result.res_version.old.version} -> {result.res_version.new.version}"
+            if result.res_version.new.kickFlag != result.res_version.old.kickFlag:
+                msg += f"\nkickFlag: {result.res_version.old.kickFlag} -> {result.res_version.new.kickFlag}"
+            await subscribe.send(msg)
+            await asyncio.sleep(random.uniform(1, 3))
+        elif result.server_config_updated:
+            logger.warning("检测到终末地服务器配置更新")
+            await subscribe.send(
+                f"检测到Android端终末地服务器配置更新\naddr: {result.server_config.old.addr} -> {result.server_config.new.addr}\nport: {result.server_config.old.port} -> {result.server_config.new.port}",
+            )
+            await asyncio.sleep(random.uniform(1, 3))
+        elif result.game_config_updated:
+            logger.warning("检测到终末地游戏配置更新")
+            update_keys = set()
+            for key, value in result.game_config.new.items():
+                if key not in result.game_config.old:
+                    update_keys.add(key)
+                    continue
+                if value != result.game_config.old[key]:
+                    update_keys.add(key)
+            msg = "\n".join(
+                [
+                    f"{key}: {result.game_config.old.get(key)} -> {result.game_config.new.get(key)}"
+                    for key in update_keys
+                ]
+            )
+            await subscribe.send(
+                f"检测到Android端终末地游戏配置更新\n{msg}",
+            )
+            await asyncio.sleep(random.uniform(1, 3))
+        elif result.network_config_updated:
+            logger.warning("检测到终末地网络配置更新")
+            update_keys = set()
+            for key, value in result.network_config.new.items():
+                if key not in result.network_config.old:
+                    update_keys.add(key)
+                    continue
+                if value != result.network_config.old[key]:
+                    update_keys.add(key)
+            msg = "\n".join(
+                [
+                    f"{key}: {result.network_config.old.get(key)} -> {result.network_config.new.get(key)}"
+                    for key in update_keys
+                ]
+            )
+            await subscribe.send(
+                f"检测到Android端终末地网络配置更新\n{msg}",
+            )
+            await asyncio.sleep(random.uniform(1, 3))
+    logger.info("Update check finished")
