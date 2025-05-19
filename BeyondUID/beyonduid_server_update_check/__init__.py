@@ -124,7 +124,7 @@ async def check_update(target_platform: Literal["Android", "Windows"]) -> Update
             async with session.get(url) as response:
                 data = json.loads(await response.text())
 
-        path = get_res_path("ArknightsUID") / f"{key}_{target_platform}.json"
+        path = get_res_path("BeyondUID") / f"{key}_{target_platform}.json"
         if not path.exists():
             with open(path, "w", encoding="utf-8") as f:
                 json.dump(data, f, indent=2)
