@@ -193,7 +193,7 @@ async def check_update(target_platform: Literal["Android", "default"]) -> Update
 async def get_latest_version(bot: Bot, ev: Event):
     result = await check_update("Android")
     await bot.send(
-        f"clientVersion: {result.launcher_version.new.version}\nresVersion: {result.res_version.new.version}"
+        f"clientVersion: {result.launcher_version.new.version}\nresVersion: {result.res_version.new.version}\nkickFlag: {result.res_version.new.kickFlag}"
     )
 
 
@@ -201,7 +201,7 @@ async def get_latest_version(bot: Bot, ev: Event):
 async def get_latest_version_win(bot: Bot, ev: Event):
     result = await check_update("default")
     await bot.send(
-        f"clientVersion: {result.launcher_version.new.version}\nresVersion: {result.res_version.new.version}"
+        f"clientVersion: {result.launcher_version.new.version}\nresVersion: {result.res_version.new.version}\nkickFlag: {result.res_version.new.kickFlag}"
     )
 
 
@@ -265,14 +265,16 @@ async def byd_client_update_checker():
                 logger.warning("检测到终末地资源版本更新")
                 match target_platform:
                     case "Android":
-                        await subscribe.send(
-                            f"检测到Android端终末地资源版本更新\nresVersion: {result.res_version.old.version} -> {result.res_version.new.version}",
-                        )
+                        msg = f"检测到Android端终末地资源版本更新\nresVersion: {result.res_version.old.version} -> {result.res_version.new.version}"
+                        if result.res_version.new.kickFlag != result.res_version.old.kickFlag:
+                            msg += f"\nkickFlag: {result.res_version.old.kickFlag} -> {result.res_version.new.kickFlag}"
+                        await subscribe.send(msg)
                         await asyncio.sleep(random.uniform(1, 3))
                     case "default":
-                        await subscribe.send(
-                            f"检测到Windows端终末地资源版本更新\nresVersion: {result.res_version.old.version} -> {result.res_version.new.version}",
-                        )
+                        msg = f"检测到Windows端终末地资源版本更新\nresVersion: {result.res_version.old.version} -> {result.res_version.new.version}"
+                        if result.res_version.new.kickFlag != result.res_version.old.kickFlag:
+                            msg += f"\nkickFlag: {result.res_version.old.kickFlag} -> {result.res_version.new.kickFlag}"
+                        await subscribe.send(msg)
                         await asyncio.sleep(random.uniform(1, 3))
             elif result.server_config_updated:
                 logger.warning("检测到终末地服务器配置更新")
