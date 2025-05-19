@@ -154,8 +154,7 @@ async def check_update(target_platform: Literal["Android", "Windows"]) -> Update
                     server_config_update = ServerConfigUpdate(
                         old=base_server_config, new=server_config
                     )
-                except Exception as e:
-                    logger.error(f"Error parsing server config: {e}")
+                except Exception as _:
                     server_config_update = ServerConfigUpdate(
                         old=ServerConfig(addr="", port=0),
                         new=ServerConfig(addr="", port=0),
