@@ -67,6 +67,7 @@ class BulletinTargetData(Struct):
 
 class BulletinTarget(Struct):
     Windows: BulletinTargetData = field(default_factory=BulletinTargetData)
+    Android: BulletinTargetData = field(default_factory=BulletinTargetData)
 
 
 class BulletinDataData(Struct):

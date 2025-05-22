@@ -63,6 +63,23 @@ async def get_ann_list_(bot: Bot, ev: Event):
     await bot.send(msg)
 
 
+@sv_ann.on_command(f"{PREFIX}获取当前Android公告列表")
+async def get_ann_list_and(bot: Bot, ev: Event):
+    async with aiohttp.ClientSession() as session:
+        async with session.get(
+            "https://game-hub.hypergryph.com/bulletin/aggregate?lang=zh-cn&platform=Android&server=China&type=1&code=endfield_cbt2&hideDetail=1"
+        ) as response:
+            data = await response.json()
+
+    data = convert(data.get("data", {}), BulletinTargetData)
+    msg = ""
+    for i in data.list_:
+        title = i.title.replace("\\n", "")
+        msg += f"CID: {i.cid} - {title}\n"
+
+    await bot.send(msg)
+
+
 @sv_ann_sub.on_fullmatch(f"{PREFIX}订阅公告")
 async def sub_ann_(bot: Bot, ev: Event):
     if ev.group_id is None:
@@ -84,9 +101,7 @@ async def sub_ann_(bot: Bot, ev: Event):
     await bot.send("成功订阅终末地公告!")
 
 
-@sv_ann_sub.on_fullmatch(
-    (f"{PREFIX}取消订阅公告", f"{PREFIX}取消公告", f"{PREFIX}退订公告")
-)
+@sv_ann_sub.on_fullmatch((f"{PREFIX}取消订阅公告", f"{PREFIX}取消公告", f"{PREFIX}退订公告"))
 async def unsub_ann_(bot: Bot, ev: Event):
     if ev.group_id is None:
         return await bot.send("请在群聊中取消订阅")

@@ -3,11 +3,10 @@ from pathlib import Path
 
 import aiohttp
 import msgspec
-from msgspec import convert
-from msgspec import json as msgjson
-
 from gsuid_core.data_store import get_res_path
 from gsuid_core.logger import logger
+from msgspec import convert
+from msgspec import json as msgjson
 
 from .model import (
     BulletinAggregate,
@@ -45,9 +44,10 @@ async def check_bulletin_update() -> dict[str, BulletinData]:
             bulletin_aggregate = BulletinAggregate()
 
     windows_data = None
+    android_data = None
 
     async with aiohttp.ClientSession() as session:
-        for platform in ["Windows"]:
+        for platform in ["Windows", "Android"]:
             async with session.get(
                 f"https://game-hub.hypergryph.com/bulletin/aggregate?lang=zh-cn&platform={platform}&server=China&type=1&code=endfield_cbt2&hideDetail=1"
             ) as response:
@@ -55,20 +55,25 @@ async def check_bulletin_update() -> dict[str, BulletinData]:
                 if cur_meta.get("code") == 0:
                     match platform:
                         case "Windows":
-                            windows_data = convert(
-                                cur_meta.get("data", {}), BulletinTargetData
-                            )
+                            windows_data = convert(cur_meta.get("data", {}), BulletinTargetData)
                             bulletin_aggregate.target.Windows = windows_data
+                        case "Android":
+                            android_data = convert(cur_meta.get("data", {}), BulletinTargetData)
+                            bulletin_aggregate.target.Android = android_data
 
-    assert windows_data is not None
+    update_list = []
+    if windows_data is not None:
+        update_list.extend(windows_data.list_)
+    if android_data is not None:
+        update_list.extend(android_data.list_)
 
-    update_list = windows_data.list_
+    if not update_list:
+        logger.info("No new bulletin found.")
+        return {}
 
     update_set: set[int] = set()
     update_list: list[BulletinTargetDataItem] = [
-        x
-        for x in update_list
-        if x.startAt not in update_set and not update_set.add(x.startAt)
+        x for x in update_list if x.startAt not in update_set and not update_set.add(x.startAt)
     ]
     update_list.sort(key=lambda x: x.startAt, reverse=True)
 
