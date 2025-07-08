@@ -118,19 +118,20 @@ async def unsub_ann_(bot: Bot, ev: Event):
 
 @scheduler.scheduled_job("interval", minutes=ann_minute_check, id="byd check ann")
 async def check_byd_ann():
-    logger.info("[终末地公告] 定时任务: 终末地公告查询..")
+    logger.debug("[终末地公告] 定时任务: 终末地公告查询..")
 
     updates = await check_bulletin_update()
 
     datas = await gs_subscribe.get_subscribe(task_name_ann)
     if not datas:
-        logger.info("[终末地公告] 暂无群订阅")
+        logger.debug("[终末地公告] 暂无群订阅")
         return
 
     if len(updates) == 0:
-        logger.info("[终末地公告] 没有最新公告")
+        logger.debug("[终末地公告] 没有最新公告")
         return
 
+    logger.info(f"[终末地公告] 共查询到{len(updates)}条最新公告")
     for data in updates.values():
         try:
             img = await get_ann_img(data)
