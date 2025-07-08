@@ -239,7 +239,7 @@ async def sub_ann_(bot: Bot, ev: Event):
 
 @scheduler.scheduled_job("interval", seconds=5, id="byd check Windows update")
 async def byd_client_update_checker_win():
-    logger.info("Checking for Windows update")
+    logger.debug("Checking for Windows update")
     result = await check_update("default")
     if (
         not result.res_updated
@@ -248,7 +248,7 @@ async def byd_client_update_checker_win():
         and not result.game_config_updated
         and not result.network_config_updated
     ):
-        logger.info("No update found")
+        logger.debug("No update found")
         return
 
     datas = await gs_subscribe.get_subscribe(task_name_server_check)
@@ -314,12 +314,12 @@ async def byd_client_update_checker_win():
                 f"检测到Windows端终末地网络配置更新\n{msg}",
             )
             await asyncio.sleep(random.uniform(1, 3))
-    logger.info("Update check finished")
+    logger.debug("Update check finished")
 
 
 @scheduler.scheduled_job("interval", seconds=5, id="byd check Android update")
 async def byd_client_update_checker():
-    logger.info("Checking for Android update")
+    logger.debug("Checking for Android update")
     result = await check_update("Android")
     if (
         not result.res_updated
@@ -328,7 +328,7 @@ async def byd_client_update_checker():
         and not result.game_config_updated
         and not result.network_config_updated
     ):
-        logger.info("No update found")
+        logger.debug("No update found")
         return
 
     datas = await gs_subscribe.get_subscribe(task_name_server_check)
@@ -406,4 +406,4 @@ async def byd_client_update_checker():
                 f"检测到Android端终末地网络配置更新\n{msg}",
             )
             await asyncio.sleep(random.uniform(1, 3))
-    logger.info("Update check finished")
+    logger.debug("Update check finished")

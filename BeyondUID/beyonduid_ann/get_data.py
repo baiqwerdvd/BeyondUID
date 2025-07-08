@@ -27,7 +27,7 @@ async def get_announcement(cid: str) -> BulletinData:
 
 async def check_bulletin_update() -> dict[str, BulletinData]:
     bulletin_path = get_res_path(["BeyondUID", "announce"]) / "bulletin.aggregate.json"
-    logger.info("Checking for game bulletin...")
+    logger.debug("Checking for game bulletin...")
 
     is_first = False if bulletin_path.exists() else True
 
@@ -68,7 +68,7 @@ async def check_bulletin_update() -> dict[str, BulletinData]:
         update_list.extend(android_data.list_)
 
     if not update_list:
-        logger.info("No new bulletin found.")
+        logger.debug("No new bulletin found.")
         return {}
 
     update_set: set[int] = set()
@@ -113,7 +113,7 @@ async def check_bulletin_update() -> dict[str, BulletinData]:
     data = msgjson.decode(msgjson.encode(bulletin_aggregate))
     with Path.open(bulletin_path, mode="w", encoding="UTF-8") as file:
         json.dump(data, file, sort_keys=False, indent=4, ensure_ascii=False)
-    logger.info("The file 'bulletin.aggregate.json' has been successfully updated.")
+    logger.debug("The file 'bulletin.aggregate.json' has been successfully updated.")
 
     if is_first:
         logger.info("Initial success, will be updated in the next polling.")
