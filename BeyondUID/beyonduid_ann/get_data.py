@@ -23,7 +23,7 @@ BULLETIN_FILE = "bulletin.aggregate.json"
 
 
 class Platform(StrEnum):
-    DEFAULT = "default"
+    WINDOWS = "Windows"
     ANDROID = "Android"
 
 
@@ -71,7 +71,9 @@ async def fetch_platform_data(
             if data.get("code") == 0:
                 return convert(data.get("data", {}), BulletinTargetData)
             else:
-                logger.warning(f"API returned error code for {platform}: {data.get('code')}")
+                logger.warning(
+                    f"API returned error code for {platform}: {data.get('code')}, {url}"
+                )
                 return None
     except (aiohttp.ClientError, json.JSONDecodeError, msgspec.DecodeError) as e:
         logger.error(f"Failed to fetch {platform} data: {e}")

@@ -233,7 +233,7 @@ class NotificationManager:
         logger.info(f"更新通知发送完成: 成功{success_count}个群，失败{failed_count}个群")
 
 
-@sv_server_check.on_command("取Android端终末地最新版本")
+@sv_server_check.on_command("取Android端最新版本")
 async def get_latest_version_android(bot: Bot, ev: Event):
     try:
         result = await update_checker.check_platform_updates(Platform.ANDROID)
@@ -252,7 +252,7 @@ async def get_latest_version_android(bot: Bot, ev: Event):
         await bot.send("获取版本信息失败，请稍后重试")
 
 
-@sv_server_check.on_command("取终末地最新版本")
+@sv_server_check.on_command("取最新版本")
 async def get_latest_version_windows(bot: Bot, ev: Event):
     try:
         result = await update_checker.check_platform_updates(Platform.DEFAULT)
@@ -271,7 +271,7 @@ async def get_latest_version_windows(bot: Bot, ev: Event):
         await bot.send("获取版本信息失败，请稍后重试")
 
 
-@sv_server_check.on_fullmatch(("取终末地网络配置", "取终末地network_config"))
+@sv_server_check.on_fullmatch(("取网络配置", "取network_config"))
 async def get_network_config(bot: Bot, ev: Event):
     try:
         result = await update_checker.check_single_config(
