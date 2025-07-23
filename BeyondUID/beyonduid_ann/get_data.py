@@ -1,4 +1,5 @@
 import json
+from enum import StrEnum
 from pathlib import Path
 
 import aiohttp
@@ -15,108 +16,177 @@ from .model import (
     BulletinTargetDataItem,
 )
 
+BASE_URL = "https://game-hub.hypergryph.com"
+GAME_CODE = "endfield_cbt2"
+LANGUAGE = "zh-cn"
+BULLETIN_FILE = "bulletin.aggregate.json"
+
+
+class Platform(StrEnum):
+    DEFAULT = "default"
+    ANDROID = "Android"
+
 
 async def get_announcement(cid: str) -> BulletinData:
-    url = f"https://game-hub.hypergryph.com/bulletin/detail/{cid}?lang=zh-cn&code=endfield_cbt2"
+    url = f"{BASE_URL}/bulletin/detail/{cid}?lang={LANGUAGE}&code={GAME_CODE}"
+
     async with aiohttp.ClientSession() as session:
-        async with session.get(url) as response:
-            data = await response.json()
-    data = convert(data.get("data", {}), BulletinData)
-    return data
-
-
-async def check_bulletin_update() -> dict[str, BulletinData]:
-    bulletin_path = get_res_path(["BeyondUID", "announce"]) / "bulletin.aggregate.json"
-    logger.debug("Checking for game bulletin...")
-
-    is_first = False if bulletin_path.exists() else True
-
-    if is_first:
-        bulletin_aggregate = BulletinAggregate()
-    else:
         try:
-            with Path.open(bulletin_path, encoding="UTF-8") as file:
-                data = json.load(file)
-            bulletin_aggregate = convert(data, BulletinAggregate)
-        except json.JSONDecodeError as _:
-            bulletin_aggregate = BulletinAggregate()
-        except msgspec.DecodeError as _:
-            bulletin_aggregate = BulletinAggregate()
+            async with session.get(url) as response:
+                response.raise_for_status()
+                data = await response.json()
+                return convert(data.get("data", {}), BulletinData)
+        except (aiohttp.ClientError, json.JSONDecodeError, msgspec.DecodeError) as e:
+            logger.error(f"Failed to get announcement {cid}: {e}")
+            raise
 
-    windows_data = None
-    android_data = None
 
-    async with aiohttp.ClientSession() as session:
-        for platform in ["Windows", "Android"]:
-            async with session.get(
-                f"https://game-hub.hypergryph.com/bulletin/aggregate?lang=zh-cn&platform={platform}&server=China&type=1&code=endfield_cbt2&hideDetail=1"
-            ) as response:
-                cur_meta = await response.json()
-                if cur_meta.get("code") == 0:
-                    match platform:
-                        case "Windows":
-                            windows_data = convert(cur_meta.get("data", {}), BulletinTargetData)
-                            bulletin_aggregate.target.Windows = windows_data
-                        case "Android":
-                            android_data = convert(cur_meta.get("data", {}), BulletinTargetData)
-                            bulletin_aggregate.target.Android = android_data
+def load_bulletin_aggregate(bulletin_path: Path) -> BulletinAggregate:
+    if not bulletin_path.exists():
+        return BulletinAggregate()
 
-    update_list = []
-    if windows_data is not None:
-        update_list.extend(windows_data.list_)
-    if android_data is not None:
-        update_list.extend(android_data.list_)
+    try:
+        with bulletin_path.open(encoding="UTF-8") as file:
+            data = json.load(file)
+        return convert(data, BulletinAggregate)
+    except (json.JSONDecodeError, msgspec.DecodeError) as e:
+        logger.warning(f"Failed to load bulletin aggregate, creating new one: {e}")
+        return BulletinAggregate()
 
-    if not update_list:
-        logger.debug("No new bulletin found.")
-        return {}
 
-    update_set: set[int] = set()
-    update_list: list[BulletinTargetDataItem] = [
-        x for x in update_list if x.startAt not in update_set and not update_set.add(x.startAt)
-    ]
-    update_list.sort(key=lambda x: x.startAt, reverse=True)
+async def fetch_platform_data(
+    session: aiohttp.ClientSession, platform: Platform
+) -> BulletinTargetData | None:
+    url = (
+        f"{BASE_URL}/bulletin/aggregate"
+        f"?lang={LANGUAGE}&platform={platform}&server=China"
+        f"&type=1&code={GAME_CODE}&hideDetail=1"
+    )
 
-    new_ann: dict[str, BulletinData] = {}
+    try:
+        async with session.get(url) as response:
+            response.raise_for_status()
+            data = await response.json()
+
+            if data.get("code") == 0:
+                return convert(data.get("data", {}), BulletinTargetData)
+            else:
+                logger.warning(f"API returned error code for {platform}: {data.get('code')}")
+                return None
+    except (aiohttp.ClientError, json.JSONDecodeError, msgspec.DecodeError) as e:
+        logger.error(f"Failed to fetch {platform} data: {e}")
+        return None
+
+
+def deduplicate_updates(
+    update_list: list[BulletinTargetDataItem],
+) -> list[BulletinTargetDataItem]:
+    seen_start_times = set()
+    deduplicated = []
 
     for item in update_list:
-        for key, value in bulletin_aggregate.update.items():
-            if value.cid == item.cid and value.startAt == item.startAt:
-                break
-            elif value.cid == item.cid and value.startAt != item.startAt:
-                bulletin_aggregate.update.pop(key)
-                if "_" in key:
-                    new_key = f"{item.cid}_{int(key.split('_')[1]) + 1}"
+        if item.startAt not in seen_start_times:
+            seen_start_times.add(item.startAt)
+            deduplicated.append(item)
+
+    return sorted(deduplicated, key=lambda x: x.startAt, reverse=True)
+
+
+def generate_update_key(cid: str, existing_key: str | None = None) -> str:
+    if existing_key and "_" in existing_key:
+        version = int(existing_key.split("_")[1]) + 1
+        return f"{cid}_{version}"
+    return f"{cid}_1"
+
+
+async def process_bulletin_updates(
+    update_list: list[BulletinTargetDataItem], bulletin_aggregate: BulletinAggregate
+) -> dict[str, BulletinData]:
+    new_announcements = {}
+
+    for item in update_list:
+        existing_key = None
+        for key, value in list(bulletin_aggregate.update.items()):
+            if value.cid == item.cid:
+                if value.startAt == item.startAt:
+                    break
                 else:
-                    new_key = f"{item.cid}_1"
-                ann = await get_announcement(item.cid)
-                bulletin_aggregate.update[new_key] = ann
-                new_ann[item.cid] = ann
-                logger.info(f"Bumped bulletin found: {item.cid}:{item.title}")
-                break
-            elif value.cid != item.cid:
+                    bulletin_aggregate.update.pop(key)
+                    existing_key = key
+                    break
+        else:
+            if item.cid not in bulletin_aggregate.data:
+                try:
+                    ann = await get_announcement(item.cid)
+                    bulletin_aggregate.data[item.cid] = ann
+                    new_announcements[item.cid] = ann
+                    logger.info(f"New bulletin found: {item.cid}:{item.title}")
+                except Exception as e:
+                    logger.error(f"Failed to get new announcement {item.cid}: {e}")
                 continue
 
-        if item.cid not in bulletin_aggregate.data:
-            ann = await get_announcement(item.cid)
-            bulletin_aggregate.data[item.cid] = ann
-            new_ann[item.cid] = ann
-            logger.info(f"New bulletin found: {item.cid}:{item.title}")
+        if existing_key:
+            try:
+                new_key = generate_update_key(item.cid, existing_key)
+                ann = await get_announcement(item.cid)
+                bulletin_aggregate.update[new_key] = ann
+                new_announcements[item.cid] = ann
+                logger.info(f"Updated bulletin found: {item.cid}:{item.title}")
+            except Exception as e:
+                logger.error(f"Failed to get updated announcement {item.cid}: {e}")
 
+    return new_announcements
+
+
+def save_bulletin_aggregate(bulletin_aggregate: BulletinAggregate, bulletin_path: Path) -> None:
     bulletin_aggregate.data = dict(
         sorted(bulletin_aggregate.data.items(), key=lambda x: int(x[0]))
     )
     bulletin_aggregate.update = dict(
-        sorted(bulletin_aggregate.update.items(), key=lambda x: x[1].cid, reverse=False)
+        sorted(bulletin_aggregate.update.items(), key=lambda x: x[1].cid)
     )
 
-    data = msgjson.decode(msgjson.encode(bulletin_aggregate))
-    with Path.open(bulletin_path, mode="w", encoding="UTF-8") as file:
-        json.dump(data, file, sort_keys=False, indent=4, ensure_ascii=False)
-    logger.debug("The file 'bulletin.aggregate.json' has been successfully updated.")
+    try:
+        data = msgjson.decode(msgjson.encode(bulletin_aggregate))
+        with bulletin_path.open(mode="w", encoding="UTF-8") as file:
+            json.dump(data, file, sort_keys=False, indent=4, ensure_ascii=False)
+        logger.debug(f"Successfully updated {BULLETIN_FILE}")
+    except Exception as e:
+        logger.error(f"Failed to save bulletin aggregate: {e}")
+        raise
 
-    if is_first:
-        logger.info("Initial success, will be updated in the next polling.")
+
+async def check_bulletin_update() -> dict[str, BulletinData]:
+    bulletin_path = get_res_path(["BeyondUID", "announce"]) / BULLETIN_FILE
+    logger.debug("Checking for game bulletin...")
+
+    is_first_run = not bulletin_path.exists()
+    bulletin_aggregate = load_bulletin_aggregate(bulletin_path)
+
+    platform_data_map = {}
+    async with aiohttp.ClientSession() as session:
+        for platform in Platform:
+            platform_data = await fetch_platform_data(session, platform)
+            if platform_data:
+                platform_data_map[platform] = platform_data
+                setattr(bulletin_aggregate.target, platform, platform_data)
+
+    all_updates = []
+    for platform_data in platform_data_map.values():
+        all_updates.extend(platform_data.list_)
+
+    if not all_updates:
+        logger.debug("No bulletin updates found.")
         return {}
-    else:
-        return new_ann
+
+    update_list = deduplicate_updates(all_updates)
+
+    new_announcements = await process_bulletin_updates(update_list, bulletin_aggregate)
+
+    save_bulletin_aggregate(bulletin_aggregate, bulletin_path)
+
+    if is_first_run:
+        logger.info("Initial run completed, updates will be detected in next polling.")
+        return {}
+
+    return new_announcements

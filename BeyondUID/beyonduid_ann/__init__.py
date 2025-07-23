@@ -11,7 +11,7 @@ from gsuid_core.subscribe import gs_subscribe
 from gsuid_core.sv import SV
 from msgspec import convert
 
-from ..beyonduid_config import PREFIX, BydConfig
+from ..beyonduid_config.byd_config import BydConfig
 from .draw_img import get_ann_img
 from .get_data import check_bulletin_update, get_announcement
 from .model import BulletinTargetData
@@ -23,7 +23,7 @@ task_name_ann = "订阅终末地公告"
 ann_minute_check: int = BydConfig.get_config("AnnMinuteCheck").data
 
 
-@sv_ann.on_command(f"{PREFIX}公告")
+@sv_ann.on_command("公告")
 async def ann_(bot: Bot, ev: Event):
     cid = ev.text
 
@@ -40,13 +40,13 @@ async def ann_(bot: Bot, ev: Event):
     await bot.send(msg)
 
 
-@sv_ann.on_command(f"{PREFIX}强制刷新全部公告")
+@sv_ann.on_command("强制刷新全部公告")
 async def force_ann_(bot: Bot, ev: Event):
     data = await check_bulletin_update()
     await bot.send(f"成功刷新{len(data)}条公告!")
 
 
-@sv_ann.on_command(f"{PREFIX}获取当前Windows公告列表")
+@sv_ann.on_command("获取当前Windows公告列表")
 async def get_ann_list_(bot: Bot, ev: Event):
     async with aiohttp.ClientSession() as session:
         async with session.get(
@@ -63,7 +63,7 @@ async def get_ann_list_(bot: Bot, ev: Event):
     await bot.send(msg)
 
 
-@sv_ann.on_command(f"{PREFIX}获取当前Android公告列表")
+@sv_ann.on_command("获取当前Android公告列表")
 async def get_ann_list_and(bot: Bot, ev: Event):
     async with aiohttp.ClientSession() as session:
         async with session.get(
@@ -80,7 +80,7 @@ async def get_ann_list_and(bot: Bot, ev: Event):
     await bot.send(msg)
 
 
-@sv_ann_sub.on_fullmatch(f"{PREFIX}订阅公告")
+@sv_ann_sub.on_fullmatch("订阅公告")
 async def sub_ann_(bot: Bot, ev: Event):
     if ev.group_id is None:
         return await bot.send("请在群聊中订阅")
@@ -101,7 +101,7 @@ async def sub_ann_(bot: Bot, ev: Event):
     await bot.send("成功订阅终末地公告!")
 
 
-@sv_ann_sub.on_fullmatch((f"{PREFIX}取消订阅公告", f"{PREFIX}取消公告", f"{PREFIX}退订公告"))
+@sv_ann_sub.on_fullmatch(("取消订阅公告", "取消公告", "退订公告"))
 async def unsub_ann_(bot: Bot, ev: Event):
     if ev.group_id is None:
         return await bot.send("请在群聊中取消订阅")

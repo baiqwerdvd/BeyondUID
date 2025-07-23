@@ -5,13 +5,9 @@ from gsuid_core.sv import SV
 from gsuid_core.utils.error_reply import UID_HINT
 
 from ..utils.database.models import BeyondBind
-from .byd_config import BydConfig
 from .set_config import set_config_func
 
 sv_self_config = SV("byd配置")
-
-
-PREFIX = BydConfig.get_config("BydPrefix").data
 
 
 # 开启 自动签到 功能
