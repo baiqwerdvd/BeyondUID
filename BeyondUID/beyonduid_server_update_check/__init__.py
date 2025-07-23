@@ -3,7 +3,7 @@ import json
 import random
 from contextlib import asynccontextmanager
 from enum import StrEnum
-from typing import Any, ClassVar
+from typing import Any, ClassVar, cast
 
 import aiofiles
 import aiohttp
@@ -510,8 +510,10 @@ async def get_network_config(bot: Bot, ev: Event):
             ConfigType.NETWORK_CONFIG, Platform.DEFAULT
         )
 
+        data = cast(NetworkConfig, result.new)
+
         content = "\n".join(
-            f"{key}: {value}" for key, value in result.new.items() if value is not None
+            f"{key}: {value}" for key, value in data.__dict__.items() if value is not None
         )
         await bot.send(f"终末地网络配置:\n{content}")
 
