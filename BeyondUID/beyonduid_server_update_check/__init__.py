@@ -84,6 +84,20 @@ REMOTE_CONFIG_URLS = {
 }
 
 
+class NetworkConfig(Struct):
+    asset: str
+    hgage: str
+    sdkenv: str
+    u8root: str
+    appcode: int
+    channel: str
+    netlogid: str
+    gameclose: bool
+    netlogurl: str
+    accounturl: str
+    launcherurl: str
+
+
 class ResVersion(Struct):
     version: str
     kickFlag: bool
@@ -195,9 +209,27 @@ class UpdateChecker:
                 case ConfigType.RES_VERSION:
                     return convert(data, ResVersion)
                 case ConfigType.SERVER_CONFIG:
+                    if data.get("code") == 404:
+                        return ServerConfig(addr="", port=0)
                     return convert(data, ServerConfig)
                 case ConfigType.LAUNCHER_VERSION:
                     return convert(data, LauncherVersion)
+                case ConfigType.NETWORK_CONFIG:
+                    if data.get("code") == 404:
+                        return NetworkConfig(
+                            asset="",
+                            hgage="",
+                            sdkenv="",
+                            u8root="",
+                            appcode=0,
+                            channel="",
+                            netlogid="",
+                            gameclose=False,
+                            netlogurl="",
+                            accounturl="",
+                            launcherurl="",
+                        )
+                    return convert(data, NetworkConfig)
                 case _:
                     return convert(data, dict[str, Any])
         except Exception as e:
@@ -469,6 +501,25 @@ async def get_latest_version_windows(bot: Bot, ev: Event):
     except Exception as e:
         logger.error(f"获取Windows端版本失败: {e}")
         await bot.send("获取版本信息失败，请稍后重试")
+
+
+@sv_server_check.on_fullmatch(("取终末地网络配置", "取终末地network_config"))
+async def get_network_config(bot: Bot, ev: Event):
+    try:
+        result = await update_checker.check_single_config(
+            ConfigType.NETWORK_CONFIG, Platform.DEFAULT
+        )
+        if not result.updated:
+            return await bot.send("终末地网络配置没有更新")
+
+        content = "\n".join(
+            f"{key}: {value}" for key, value in result.new.items() if value is not None
+        )
+        await bot.send(f"终末地网络配置:\n{content}")
+
+    except Exception as e:
+        logger.error(f"获取终末地网络配置失败: {e}")
+        await bot.send("获取网络配置失败，请稍后重试")
 
 
 @sv_server_check_sub.on_fullmatch(f"{PREFIX}取消订阅版本更新")
