@@ -2,13 +2,12 @@ import textwrap
 from typing import Any
 
 from bs4 import BeautifulSoup, element
-from PIL import Image, ImageDraw
-
 from gsuid_core.logger import logger
 from gsuid_core.utils.fonts.fonts import core_font as cf
 from gsuid_core.utils.image.convert import convert_img
 from gsuid_core.utils.image.image_tools import get_div
 from gsuid_core.utils.image.utils import download_pic_to_image
+from PIL import Image, ImageDraw
 
 from .model import BulletinData
 
@@ -96,9 +95,7 @@ async def process_tag(
     return point, elements
 
 
-async def soup_to_img(
-    header: str, soup: BeautifulSoup, bannerImageUrl: str
-) -> str | bytes:
+async def soup_to_img(header: str, soup: BeautifulSoup, bannerImageUrl: str) -> str | bytes:
     banner_img = None
     banner_img_new_h = 0
     header_img = None
@@ -110,9 +107,7 @@ async def soup_to_img(
         banner_img = banner_img.resize((930, banner_img_new_h))
 
     if header != "":
-        header_img = (
-            "https://ak.hycdn.cn/announce/assets/images/announcement/header.jpg"
-        )
+        header_img = "https://ak.hycdn.cn/announce/assets/images/announcement/header.jpg"
         header_img = await download_pic_to_image(header_img)
         header_img_new_h = int((930 / header_img.size[0]) * header_img.size[1])
         header_img = header_img.resize((930, header_img_new_h))

@@ -1,11 +1,7 @@
-from typing import Type
-
 from gsuid_core.utils.database.base_models import (
-    BaseModel,
     Bind,
     Push,
     T_BaseIDModel,
-    User,
     with_session,
 )
 from gsuid_core.webconsole.mount_app import GsAdminModel, PageSchema, site
@@ -35,7 +31,7 @@ class BeyondPush(Push, table=True):
     @classmethod
     @with_session
     async def base_select_data(
-        cls: Type[T_BaseIDModel], session: AsyncSession, **data
+        cls: type[T_BaseIDModel], session: AsyncSession, **data
     ) -> T_BaseIDModel | None:
         stmt = select(cls)
         for k, v in data.items():
@@ -57,7 +53,7 @@ class BeyondPush(Push, table=True):
         return not bool(retcode)
 
     @classmethod
-    async def select_push_data(cls: Type[T_BaseIDModel], uid: str) -> T_BaseIDModel | None:
+    async def select_push_data(cls: type[T_BaseIDModel], uid: str) -> T_BaseIDModel | None:
         return await cls.base_select_data(uid=uid)
 
     @classmethod

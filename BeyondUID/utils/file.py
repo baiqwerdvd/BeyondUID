@@ -1,11 +1,10 @@
 import json
 from pathlib import Path
-from typing import Dict
 
-from loguru import logger
+from gsuid_core.logger import logger
 
 
-def read_json(file_path: Path, **kwargs) -> Dict:
+def read_json(file_path: Path, **kwargs) -> dict:
     """
     Read a JSON file and return its contents as a dictionary.
     """
@@ -17,7 +16,7 @@ def read_json(file_path: Path, **kwargs) -> Dict:
         return {}
 
 
-def write_json(data: Dict, file_path: Path) -> None:
+def write_json(data: dict, file_path: Path) -> None:
     """
     Write a dictionary to a JSON file.
     """
