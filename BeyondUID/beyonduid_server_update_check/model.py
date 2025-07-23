@@ -6,7 +6,7 @@ from msgspec import Struct
 
 class Platform(StrEnum):
     DEFAULT = "default"
-    ANDROID = "android"
+    ANDROID = "Android"
 
 
 class NetworkConfig(Struct):
