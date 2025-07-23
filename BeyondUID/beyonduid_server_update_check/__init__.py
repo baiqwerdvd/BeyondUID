@@ -201,7 +201,7 @@ class UpdateChecker:
                 case _:
                     return convert(data, dict[str, Any])
         except Exception as e:
-            logger.warning(f"解析配置数据失败 {config_type}: {e}")
+            logger.warning(f"解析配置数据失败 {config_type}: {e}, {data}")
             match config_type:
                 case ConfigType.SERVER_CONFIG:
                     return ServerConfig(addr="", port=0)
