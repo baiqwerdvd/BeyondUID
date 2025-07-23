@@ -1,9 +1,11 @@
 import asyncio
+import json
 import random
 
 import aiohttp
 from gsuid_core.aps import scheduler
 from gsuid_core.bot import Bot
+from gsuid_core.data_store import get_res_path
 from gsuid_core.logger import logger
 from gsuid_core.models import Event
 from gsuid_core.segment import MessageSegment
@@ -13,8 +15,8 @@ from msgspec import convert
 
 from ..beyonduid_config.byd_config import BydConfig
 from .draw_img import get_ann_img
-from .get_data import check_bulletin_update, get_announcement
-from .model import BulletinTargetData
+from .get_data import BULLETIN_FILE, check_bulletin_update, get_announcement
+from .model import BulletinAggregate, BulletinTargetData
 
 sv_ann = SV("终末地公告")
 sv_ann_sub = SV("订阅终末地公告", pm=3)
@@ -25,21 +27,35 @@ ann_minute_check: int = BydConfig.get_config("AnnMinuteCheck").data
 
 @sv_ann.on_command("公告")
 async def ann_(bot: Bot, ev: Event):
-    cid = ev.text
-
+    cid = ev.text.strip()
     if not cid.isdigit():
-        raise Exception("公告ID不正确")
+        return await bot.send("公告ID不正确")
 
     data = await get_announcement(cid)
     if not data:
-        return await bot.send("Target not found or invalid CID!")
-    img = await get_ann_img(data)
-    title = data.title.replace("\\n", "")
-    msg = [
-        MessageSegment.text(f"[终末地公告] {title}\n"),
-        MessageSegment.image(img),
-    ]
-    await bot.send(msg)
+        bulletin_path = get_res_path(["BeyondUID", "announce"]) / BULLETIN_FILE
+        try:
+            with bulletin_path.open("r", encoding="UTF-8") as file:
+                bulletin_data = convert(json.load(file), BulletinAggregate)
+            data = bulletin_data.data.get(cid)
+        except Exception as e:
+            logger.exception(e)
+            return await bot.send("读取本地公告缓存失败！")
+
+        if not data:
+            return await bot.send("未找到该公告或CID无效！")
+
+    try:
+        img = await get_ann_img(data)
+        title = data.title.replace("\\n", "")
+        msg = [
+            MessageSegment.text(f"[终末地公告] {title}\n"),
+            MessageSegment.image(img),
+        ]
+        await bot.send(msg)
+    except Exception as e:
+        logger.exception(e)
+        await bot.send("公告图片生成失败！")
 
 
 @sv_ann.on_command("强制刷新全部公告")
