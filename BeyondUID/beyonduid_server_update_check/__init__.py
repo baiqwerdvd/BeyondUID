@@ -15,6 +15,7 @@ from gsuid_core.models import Event
 from gsuid_core.subscribe import gs_subscribe
 from gsuid_core.sv import SV
 from msgspec import Struct, convert
+from msgspec.structs import asdict
 
 from ..beyonduid_config import PREFIX
 
@@ -157,6 +158,10 @@ class UpdateChecker:
         try:
             async with self.get_session() as session:
                 async with session.get(url) as response:
+                    if response.status == 404:
+                        logger.debug(f"配置未找到 {config_type} ({platform})")
+                        return None
+
                     if response.status != 200:
                         logger.warning(
                             f"获取配置失败 {config_type} ({platform}): HTTP {response.status}"
@@ -307,7 +312,14 @@ class NotificationManager:
         )
 
     @staticmethod
-    def format_dict_changes(old_dict: dict[str, Any], new_dict: dict[str, Any]) -> str:
+    def format_dict_changes(
+        old_dict: dict[str, Any] | Struct, new_dict: dict[str, Any] | Struct
+    ) -> str:
+        if isinstance(old_dict, Struct):
+            old_dict = asdict(old_dict)
+        if isinstance(new_dict, Struct):
+            new_dict = asdict(new_dict)
+
         update_keys = set()
         delete_keys = set()
         new_keys = set()
@@ -347,19 +359,25 @@ class NotificationManager:
         updates = []
 
         if result.launcher_version.updated:
+            data_new = cast(LauncherVersion, result.launcher_version.new)
+            data_old = cast(LauncherVersion, result.launcher_version.old)
+
             updates.append(
                 {
                     "type": "launcher_version",
                     "priority": UpdateConfig.get_priority("launcher_version"),
                     "title": "客户端版本更新",
-                    "content": f"版本: {result.launcher_version.old.version} → {result.launcher_version.new.version}",
+                    "content": f"版本: {data_old.version} → {data_new.version}",
                 }
             )
 
         if result.res_version.updated:
-            content = f"版本: {result.res_version.old.version} → {result.res_version.new.version}"
-            if result.res_version.new.kickFlag != result.res_version.old.kickFlag:
-                content += f"\nkickFlag: {result.res_version.old.kickFlag} → {result.res_version.new.kickFlag}"
+            data_new = cast(ResVersion, result.res_version.new)
+            data_old = cast(ResVersion, result.res_version.old)
+
+            content = f"版本: {data_old.version} → {data_new.version}"
+            if data_new.kickFlag != data_old.kickFlag:
+                content += f"\nkickFlag: {data_old.kickFlag} → {data_new.kickFlag}"
 
             updates.append(
                 {
@@ -371,12 +389,19 @@ class NotificationManager:
             )
 
         if result.server_config.updated:
+            data_new = cast(ServerConfig, result.server_config.new)
+            data_old = cast(ServerConfig, result.server_config.old)
+
+            message = (
+                f"地址: {data_old.addr} → {data_new.addr}\n"
+                f"端口: {data_old.port} → {data_new.port}"
+            )
             updates.append(
                 {
                     "type": "server_config",
                     "priority": UpdateConfig.get_priority("server_config"),
                     "title": "服务器配置更新",
-                    "content": f"地址: {result.server_config.old.addr} → {result.server_config.new.addr}\n端口: {result.server_config.old.port} → {result.server_config.new.port}",
+                    "content": message,
                 }
             )
 
@@ -384,6 +409,7 @@ class NotificationManager:
             changes = NotificationManager.format_dict_changes(
                 result.game_config.old, result.game_config.new
             )
+
             updates.append(
                 {
                     "type": "game_config",
@@ -394,9 +420,11 @@ class NotificationManager:
             )
 
         if result.network_config.updated:
-            changes = NotificationManager.format_dict_changes(
-                result.network_config.old, result.network_config.new
-            )
+            data_new = cast(NetworkConfig, result.network_config.new)
+            data_old = cast(NetworkConfig, result.network_config.old)
+
+            changes = NotificationManager.format_dict_changes(data_old, data_new)
+
             updates.append(
                 {
                     "type": "network_config",
@@ -479,10 +507,14 @@ update_checker = UpdateChecker()
 async def get_latest_version_android(bot: Bot, ev: Event):
     try:
         result = await update_checker.check_platform_updates(Platform.ANDROID)
+
+        launcher_data = cast(LauncherVersion, result.launcher_version.new)
+        res_version_data = cast(ResVersion, result.res_version.new)
+
         await bot.send(
-            f"clientVersion: {result.launcher_version.new.version}\n"
-            f"resVersion: {result.res_version.new.version}\n"
-            f"kickFlag: {result.res_version.new.kickFlag}"
+            f"clientVersion: {launcher_data.version}\n"
+            f"resVersion: {res_version_data.version}\n"
+            f"kickFlag: {res_version_data.kickFlag}"
         )
     except Exception as e:
         logger.error(f"获取Android端版本失败: {e}")
@@ -493,10 +525,14 @@ async def get_latest_version_android(bot: Bot, ev: Event):
 async def get_latest_version_windows(bot: Bot, ev: Event):
     try:
         result = await update_checker.check_platform_updates(Platform.DEFAULT)
+
+        launcher_data = cast(LauncherVersion, result.launcher_version.new)
+        res_version_data = cast(ResVersion, result.res_version.new)
+
         await bot.send(
-            f"clientVersion: {result.launcher_version.new.version}\n"
-            f"resVersion: {result.res_version.new.version}\n"
-            f"kickFlag: {result.res_version.new.kickFlag}"
+            f"clientVersion: {launcher_data.version}\n"
+            f"resVersion: {res_version_data.version}\n"
+            f"kickFlag: {res_version_data.kickFlag}"
         )
     except Exception as e:
         logger.error(f"获取Windows端版本失败: {e}")
@@ -511,8 +547,6 @@ async def get_network_config(bot: Bot, ev: Event):
         )
 
         data = cast(NetworkConfig, result.new)
-
-        from msgspec.structs import asdict
 
         content = "\n".join(
             f"{key}: {value}" for key, value in asdict(data).items() if value is not None
@@ -555,7 +589,6 @@ async def unsubscribe_version_updates(bot: Bot, ev: Event):
 
 @sv_server_check_sub.on_fullmatch(f"{PREFIX}查看订阅状态")
 async def check_subscription_status(bot: Bot, ev: Event):
-    """查看订阅状态"""
     try:
         data = await gs_subscribe.get_subscribe(TASK_NAME_SERVER_CHECK)
 
