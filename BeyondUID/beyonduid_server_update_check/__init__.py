@@ -512,8 +512,10 @@ async def get_network_config(bot: Bot, ev: Event):
 
         data = cast(NetworkConfig, result.new)
 
+        from msgspec.structs import asdict
+
         content = "\n".join(
-            f"{key}: {value}" for key, value in data.__dict__.items() if value is not None
+            f"{key}: {value}" for key, value in asdict(data).items() if value is not None
         )
         await bot.send(f"终末地网络配置:\n{content}")
 
