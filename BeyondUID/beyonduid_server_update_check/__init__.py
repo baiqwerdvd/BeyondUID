@@ -509,8 +509,6 @@ async def get_network_config(bot: Bot, ev: Event):
         result = await update_checker.check_single_config(
             ConfigType.NETWORK_CONFIG, Platform.DEFAULT
         )
-        if not result.updated:
-            return await bot.send("终末地网络配置没有更新")
 
         content = "\n".join(
             f"{key}: {value}" for key, value in result.new.items() if value is not None
