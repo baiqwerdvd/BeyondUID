@@ -27,7 +27,7 @@ class Platform(StrEnum):
     ANDROID = "Android"
 
 
-async def get_announcement(cid: str) -> BulletinData:
+async def get_announcement(cid: str) -> BulletinData | None:
     url = f"{BASE_URL}/bulletin/detail/{cid}?lang={LANGUAGE}&code={GAME_CODE}"
 
     async with aiohttp.ClientSession() as session:
@@ -35,6 +35,12 @@ async def get_announcement(cid: str) -> BulletinData:
             async with session.get(url) as response:
                 response.raise_for_status()
                 data = await response.json()
+
+                # {"code":1500,"msg":"Bulletin not found","data":{}}
+                if data.get("code") == 1500:
+                    logger.warning(f"Bulletin not found for CID: {cid}")
+                    return None
+
                 return convert(data.get("data", {}), BulletinData)
         except (aiohttp.ClientError, json.JSONDecodeError, msgspec.DecodeError) as e:
             logger.error(f"Failed to get announcement {cid}: {e}")
@@ -120,6 +126,9 @@ async def process_bulletin_updates(
             if item.cid not in bulletin_aggregate.data:
                 try:
                     ann = await get_announcement(item.cid)
+                    if not ann:
+                        logger.warning(f"Announcement not found for CID: {item.cid}")
+                        continue
                     bulletin_aggregate.data[item.cid] = ann
                     new_announcements[item.cid] = ann
                     logger.info(f"New bulletin found: {item.cid}:{item.title}")
@@ -131,6 +140,9 @@ async def process_bulletin_updates(
             try:
                 new_key = generate_update_key(item.cid, existing_key)
                 ann = await get_announcement(item.cid)
+                if not ann:
+                    logger.warning(f"Announcement not found for CID: {item.cid}")
+                    continue
                 bulletin_aggregate.update[new_key] = ann
                 new_announcements[item.cid] = ann
                 logger.info(f"Updated bulletin found: {item.cid}:{item.title}")

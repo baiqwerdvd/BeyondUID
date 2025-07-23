@@ -31,6 +31,8 @@ async def ann_(bot: Bot, ev: Event):
         raise Exception("公告ID不正确")
 
     data = await get_announcement(cid)
+    if not data:
+        return await bot.send("Target not found or invalid CID!")
     img = await get_ann_img(data)
     title = data.title.replace("\\n", "")
     msg = [
