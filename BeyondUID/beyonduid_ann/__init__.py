@@ -15,7 +15,14 @@ from msgspec import convert
 
 from ..beyonduid_config.byd_config import BydConfig
 from .draw_img import get_ann_img
-from .get_data import BULLETIN_FILE, check_bulletin_update, get_announcement
+from .get_data import (
+    BASE_URL,
+    BULLETIN_FILE,
+    GAME_CODE,
+    LANGUAGE,
+    check_bulletin_update,
+    get_announcement,
+)
 from .model import BulletinAggregate, BulletinTargetData
 
 sv_ann = SV("终末地公告")
@@ -68,7 +75,7 @@ async def force_ann_(bot: Bot, ev: Event):
 async def get_ann_list_(bot: Bot, ev: Event):
     async with aiohttp.ClientSession() as session:
         async with session.get(
-            "https://game-hub.hypergryph.com/bulletin/aggregate?lang=zh-cn&platform=Windows&server=China&type=1&code=endfield_cbt2&hideDetail=1"
+            f"{BASE_URL}/bulletin/aggregate?lang={LANGUAGE}&platform=Windows&server=China&type=1&code={GAME_CODE}&hideDetail=1"
         ) as response:
             data = await response.json()
 
@@ -85,7 +92,7 @@ async def get_ann_list_(bot: Bot, ev: Event):
 async def get_ann_list_and(bot: Bot, ev: Event):
     async with aiohttp.ClientSession() as session:
         async with session.get(
-            "https://game-hub.hypergryph.com/bulletin/aggregate?lang=zh-cn&platform=Android&server=China&type=1&code=endfield_cbt2&hideDetail=1"
+            f"{BASE_URL}/bulletin/aggregate?lang={LANGUAGE}&platform=Android&server=China&type=1&code={GAME_CODE}&hideDetail=1"
         ) as response:
             data = await response.json()
 

@@ -17,7 +17,7 @@ from .model import (
 )
 
 BASE_URL = "https://game-hub.hypergryph.com"
-GAME_CODE = "endfield_cbt2"
+GAME_CODE = "endfield_cbt3"
 LANGUAGE = "zh-cn"
 BULLETIN_FILE = "bulletin.aggregate.json"
 
