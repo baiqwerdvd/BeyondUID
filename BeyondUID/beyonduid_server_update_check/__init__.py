@@ -97,6 +97,9 @@ class NotificationManager:
         if NotificationManager.is_error(data):
             return NotificationManager._build_error_message(data)
 
+        if data is None:
+            return "No data available"
+
         if isinstance(data, BaseModel):
             return data.model_dump_json(indent=2)
         elif isinstance(data, dict):
