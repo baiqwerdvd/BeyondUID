@@ -25,6 +25,13 @@ class UpdateConfig:
         UpdatePriority.LOW: "ℹ️",
     }
 
+    priority_order = [
+        UpdatePriority.CRITICAL,
+        UpdatePriority.HIGH,
+        UpdatePriority.MEDIUM,
+        UpdatePriority.LOW,
+    ]
+
     @classmethod
     def get_priority(cls, update_type: str) -> UpdatePriority:
         return cls.PRIORITY_MAP.get(update_type, UpdatePriority.LOW)
