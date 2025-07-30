@@ -25,7 +25,7 @@ class UpdateConfig:
         UpdatePriority.LOW: "ℹ️",
     }
 
-    priority_order = [
+    priority_order: ClassVar[list[UpdatePriority]] = [
         UpdatePriority.CRITICAL,
         UpdatePriority.HIGH,
         UpdatePriority.MEDIUM,

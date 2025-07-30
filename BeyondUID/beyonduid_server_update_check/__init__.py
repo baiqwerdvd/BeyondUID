@@ -90,20 +90,14 @@ class NotificationManager:
     def _build_error_message(error_obj: RemoteConfigError | dict[str, Any]) -> str:
         if isinstance(error_obj, dict):
             error_obj = RemoteConfigError.model_validate(error_obj)
-        details = [
-            f"  - code: {error_obj.code}",
-            f"  - reason: {error_obj.reason}",
-            f"  - message: {error_obj.message}",
-        ]
-        if error_obj.metadata:
-            details.append(f"  - metadata: {error_obj.metadata}")
-        return "\n".join(details)
+        return f"{error_obj.code} - {error_obj.reason} - {error_obj.message}"
 
     @staticmethod
     def _get_data_representation(data: Any) -> str:
+        if NotificationManager.is_error(data):
+            return NotificationManager._build_error_message(data)
+
         if isinstance(data, BaseModel):
-            if isinstance(data, RemoteConfigError):
-                return NotificationManager._build_error_message(data)
             return data.model_dump_json(indent=2)
         elif isinstance(data, dict):
             return json.dumps(data, indent=2, ensure_ascii=False)
