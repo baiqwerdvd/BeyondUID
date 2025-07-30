@@ -361,19 +361,17 @@ async def get_latest_version_android(bot: Bot, ev: Event):
         clientVersion = (
             f"clientVersion: {launcher_data.version}"
             if isinstance(launcher_data, LauncherVersion)
-            else f"RemoteConfigError: {NotificationManager._build_error_message(launcher_data)}"
+            else f"clientVersion: {launcher_data.reason} - {launcher_data.message}"
         )
         resVersion = (
             f"resVersion: {res_version_data.version}"
             if isinstance(res_version_data, ResVersion)
-            else "RemoteConfigError: "
-            f"{NotificationManager._build_error_message(res_version_data)}"
+            else f"resVersion: {res_version_data.reason} - {res_version_data.message}"
         )
         kickFlag = (
             res_version_data.kickFlag
             if isinstance(res_version_data, ResVersion)
-            else "RemoteConfigError: "
-            f"{NotificationManager._build_error_message(res_version_data)}"
+            else f"kickFlag: {res_version_data.reason} - {res_version_data.message}"
         )
 
         await bot.send(f"终末地版本信息(Android):\n{clientVersion}\n{resVersion}\n{kickFlag}")
@@ -399,19 +397,17 @@ async def get_latest_version_windows(bot: Bot, ev: Event):
         clientVersion = (
             f"clientVersion: {launcher_data.version}"
             if isinstance(launcher_data, LauncherVersion)
-            else f"RemoteConfigError: {NotificationManager._build_error_message(launcher_data)}"
+            else f"clientVersion: {launcher_data.reason} - {launcher_data.message}"
         )
         resVersion = (
             f"resVersion: {res_version_data.version}"
             if isinstance(res_version_data, ResVersion)
-            else "RemoteConfigError: "
-            f"{NotificationManager._build_error_message(res_version_data)}"
+            else f"resVersion: {res_version_data.reason} - {res_version_data.message}"
         )
         kickFlag = (
             res_version_data.kickFlag
             if isinstance(res_version_data, ResVersion)
-            else "RemoteConfigError: "
-            f"{NotificationManager._build_error_message(res_version_data)}"
+            else f"kickFlag: {res_version_data.reason} - {res_version_data.message}"
         )
 
         await bot.send(f"终末地版本信息(default):\n{clientVersion}\n{resVersion}\n{kickFlag}")
