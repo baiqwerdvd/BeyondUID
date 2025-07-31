@@ -271,7 +271,7 @@ class NotificationManager:
             grouped_messages[update_content_str].append(platform)
 
         if not grouped_messages:
-            logger.info("未检测到任何终末地更新")
+            logger.debug("未检测到任何终末地更新")
             return
 
         messages_to_send: list[str] = []
