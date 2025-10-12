@@ -50,9 +50,9 @@ class ConfigType(StrEnum):
 
 
 REMOTE_CONFIG_URLS = {
-    ConfigType.NETWORK_CONFIG: "https://game-config.hypergryph.com/api/remote_config/get_remote_config/3/prod-cbt/default/{device}/network_config",
-    ConfigType.GAME_CONFIG: "https://game-config.hypergryph.com/api/remote_config/get_remote_config/3/prod-cbt/default/{device}/game_config",
-    ConfigType.RES_VERSION: "https://game-config.hypergryph.com/api/remote_config/get_remote_config/3/prod-cbt/default/{device}/res_version",
-    ConfigType.SERVER_CONFIG: "https://game-config.hypergryph.com/api/remote_config/get_remote_config/3/prod-cbt/default/{device}/server_config_China",
+    ConfigType.NETWORK_CONFIG: "https://game-config.hypergryph.com/api/remote_config/get_remote_config/3/prod-cbt3/default/{device}/network_config",
+    ConfigType.GAME_CONFIG: "https://game-config.hypergryph.com/api/remote_config/get_remote_config/3/prod-cbt3/default/{device}/game_config",
+    ConfigType.RES_VERSION: "https://game-config.hypergryph.com/api/remote_config/get_remote_config/3/prod-cbt3/default/{device}/res_version",
+    ConfigType.SERVER_CONFIG: "https://game-config.hypergryph.com/api/remote_config/get_remote_config/3/prod-cbt3/default/{device}/server_config_China",
     ConfigType.LAUNCHER_VERSION: "https://launcher.hypergryph.com/api/game/get_latest?appcode=CAdYGoQmEUZnxXGf&channel=1",
 }
