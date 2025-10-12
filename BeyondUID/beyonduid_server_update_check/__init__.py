@@ -144,23 +144,25 @@ class NotificationManager:
                 is_new_error = NotificationManager.is_error(new_data)
 
                 if not is_old_error and is_new_error:
-                    content = NotificationManager._get_data_representation(new_data)
+                    content_old = NotificationManager._get_data_representation(old_data)
+                    content_new = NotificationManager._get_data_representation(new_data)
                     updates.append(
                         {
                             "type": "error_detected",
                             "priority": UpdateConfig.get_priority("error_detected"),
                             "title": f"{title_prefix}：检测到配置错误",
-                            "content": f"原配置: {old_data}\n\n新状态: 错误\n{content}",
+                            "content": f"原配置:\n{content_old}\n\n新状态: 错误\n{content_new}",
                         }
                     )
                 elif is_old_error and not is_new_error:
-                    content = NotificationManager._get_data_representation(new_data)
+                    content_old = NotificationManager._get_data_representation(old_data)
+                    content_new = NotificationManager._get_data_representation(new_data)
                     updates.append(
                         {
                             "type": "error_resolved",
                             "priority": UpdateConfig.get_priority("error_resolved"),
                             "title": f"{title_prefix}：配置错误已解决",
-                            "content": f"原状态: 错误\n{content}\n\n新配置: {new_data}",
+                            "content": f"原状态: 错误\n{content_old}\n\n新配置:\n{content_new}",
                         }
                     )
                 elif is_old_error and is_new_error:
