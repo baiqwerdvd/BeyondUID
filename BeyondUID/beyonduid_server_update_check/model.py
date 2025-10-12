@@ -86,11 +86,11 @@ class RemoteConfigDataWithUUID[T](BaseModel):
 
 
 class PlatformLocalConfig(BaseModel):
-    network_config: RemoteConfigDataWithUUID[NetworkConfigWithError]
-    res_version: RemoteConfigDataWithUUID[ResVersionWithError]
-    server_config: RemoteConfigDataWithUUID[ServerConfigWithError]
-    game_config: RemoteConfigDataWithUUID[GameConfigWithError]
-    launcher_version: RemoteConfigDataWithUUID[LauncherVersionWithError]
+    network_config: RemoteConfigDataWithUUID[NetworkConfig | RemoteConfigError]
+    res_version: RemoteConfigDataWithUUID[ResVersion | RemoteConfigError]
+    server_config: RemoteConfigDataWithUUID[ServerConfig | RemoteConfigError]
+    game_config: RemoteConfigDataWithUUID[dict[str, Any] | RemoteConfigError]
+    launcher_version: RemoteConfigDataWithUUID[LauncherVersion | RemoteConfigError]
 
 
 class RemoteConfigLocalStorage(BaseModel):
@@ -100,8 +100,8 @@ class RemoteConfigLocalStorage(BaseModel):
 
 
 class RemoteConfigRemoteData(BaseModel):
-    network_config: NetworkConfigWithError
-    res_version: ResVersionWithError
-    server_config: ServerConfigWithError
-    game_config: GameConfigWithError
-    launcher_version: LauncherVersionWithError
+    network_config: NetworkConfig | RemoteConfigError
+    res_version: ResVersion | RemoteConfigError
+    server_config: ServerConfig | RemoteConfigError
+    game_config: dict[str, Any] | RemoteConfigError
+    launcher_version: LauncherVersion | RemoteConfigError
