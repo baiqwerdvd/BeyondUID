@@ -8,12 +8,10 @@ AES_BLOCK_SIZE = 16
 
 
 def pkcs7_unpad(data: bytes) -> bytes:
-    """Remove PKCS7 padding from decrypted data"""
     if not data:
         return data
     padding_len = data[-1]
     if padding_len > 0 and padding_len <= AES_BLOCK_SIZE:
-        # Verify all padding bytes are correct
         if all(b == padding_len for b in data[-padding_len:]):
             return data[:-padding_len]
     return data
@@ -55,7 +53,6 @@ class U8ConfigUtils:
 
 
 def strip_url_query_params(url: str) -> str:
-    """移除 URL 中的查询参数，只保留路径部分"""
     if not url or not isinstance(url, str):
         return url
     parsed = urlparse(url)
@@ -63,7 +60,6 @@ def strip_url_query_params(url: str) -> str:
 
 
 def normalize_data_for_comparison(data: Any) -> Any:
-    """递归规范化数据，移除 URL 中的动态参数（如 auth_key）"""
     if isinstance(data, dict):
         return {k: normalize_data_for_comparison(v) for k, v in data.items()}
     elif isinstance(data, list):

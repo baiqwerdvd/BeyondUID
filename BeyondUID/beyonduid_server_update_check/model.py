@@ -9,6 +9,8 @@ class Platform(StrEnum):
     DEFAULT = "default"
     WINDOWS = "Windows"
     ANDROID = "Android"
+    IOS = "iOS"
+    PLAYSTATION = "PlayStation"
 
 
 class U8Config(BaseModel):
@@ -22,10 +24,7 @@ class U8Config(BaseModel):
     randStr: str
 
 
-# ============= Engine Config Models =============
 class EngineConfigParam(BaseModel):
-    """Parameters for a specific engine config fix"""
-
     Platform: str = ""
     Processor: str | None = None
     DeviceModel: str | None = None
@@ -82,16 +81,12 @@ class ResourcePkg(BaseModel):
 
 
 class ResourceItem(BaseModel):
-    """Resource item in the resources list"""
-
     name: str  # "main" or "initial"
     version: str  # e.g., "5310633-12"
     path: str  # resource download path
 
 
 class ResVersionConfigs(BaseModel):
-    """Parsed configs from ResVersion.configs JSON string"""
-
     kick_flag: bool = False
 
 
