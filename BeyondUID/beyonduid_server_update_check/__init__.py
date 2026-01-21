@@ -463,32 +463,30 @@ def _format_version_info(
     launcher_data: LauncherVersion | RemoteConfigError,
     res_data: ResVersion | RemoteConfigError,
 ) -> str:
-    """Format version info with beautified output"""
-    lines = [
-        f"终末地版本信息 ({platform_name})",
-        SEPARATOR,
-    ]
+    lines = [f"📦 终末地版本信息 ({platform_name})", ""]
 
     # Client version
     if isinstance(launcher_data, LauncherVersion):
-        lines.append(OutputFormatter.format_key_value("客户端版本", launcher_data.version))
+        lines.append(f"▸ 客户端版本: {launcher_data.version}")
     else:
-        err_msg = f"错误: {launcher_data.reason}"
-        lines.append(OutputFormatter.format_key_value("客户端版本", err_msg))
+        lines.append(f"▸ 客户端版本: 错误 - {launcher_data.reason}")
+
+    # Kick flag
+    if isinstance(res_data, ResVersion):
+        kick_flag_str = OutputFormatter.format_bool(res_data.get_parsed_configs().kick_flag)
+        lines.append(f"▸ 踢出标记: {kick_flag_str}")
+
+    lines.append("")  # Empty line for spacing
 
     # Resource version
     if isinstance(res_data, ResVersion):
-        lines.append(OutputFormatter.format_key_value("资源版本", res_data.res_version or "未知"))
-        kick_flag_str = OutputFormatter.format_bool(res_data.get_parsed_configs().kick_flag)
-        lines.append(OutputFormatter.format_key_value("踢出标记", kick_flag_str))
-        # Display individual resource versions
+        lines.append("▸ 资源版本")
+        lines.append(f"  {res_data.res_version or '未知'}")
         for resource in res_data.resources:
-            lines.append(OutputFormatter.format_key_value(f"  {resource.name}", resource.version))
+            lines.append(f"  · {resource.name}: {resource.version}")
     else:
-        err_msg = f"错误: {res_data.reason}"
-        lines.append(OutputFormatter.format_key_value("资源版本", err_msg))
+        lines.append(f"▸ 资源版本: 错误 - {res_data.reason}")
 
-    lines.append(SEPARATOR)
     return "\n".join(lines)
 
 
