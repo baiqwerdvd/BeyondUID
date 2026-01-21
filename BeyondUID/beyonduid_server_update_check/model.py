@@ -136,6 +136,7 @@ class UpdateCheckResult(BaseModel):
     engine_config: ConfigUpdate
     launcher_version: ConfigUpdate
     platform: Platform
+    is_first_init: bool = False  # 标识是否为首次初始化
 
 
 class RemoteConfigError(BaseModel):

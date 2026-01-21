@@ -750,6 +750,11 @@ async def check_remote_config_updates():
     for platform in Platform:
         result = await update_checker.check_platform_updates(platform)
 
+        # 跳过首次初始化的平台，不发送更新通知
+        if result.is_first_init:
+            logger.info(f"{platform.value} 端首次初始化，跳过更新通知")
+            continue
+
         if not NotificationManager.has_any_update(result):
             logger.debug(f"{platform.value} 端无更新")
             continue

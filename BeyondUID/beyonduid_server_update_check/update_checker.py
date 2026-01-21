@@ -330,16 +330,24 @@ class UpdateChecker:
                 result[config_type_str] = self._get_latest_data_from_storage(config_storage)
             return result
 
-    async def check_single_config(self, platform: Platform) -> ConfigUpdate:
+    async def check_single_config(self, platform: Platform) -> tuple[ConfigUpdate, bool]:
+        """
+        检查单个平台的配置更新。
+
+        Returns:
+            tuple[ConfigUpdate, bool]: (配置更新结果, 是否为首次初始化)
+        """
         new_remote_data = await self.fetch_config(platform)
         if new_remote_data is None:
             logger.error(f"无法获取配置 {platform.value}")
-            return ConfigUpdate(old={}, new={}, updated=False)
+            return ConfigUpdate(old={}, new={}, updated=False), False
 
         old_storage = await self.load_cached_config()
         old_platform_data = old_storage.platforms.get(platform, None)
+        is_first_init = old_platform_data is None  # 记录是否为首次初始化
+
         if old_platform_data is None:
-            logger.info(f"没有找到 {platform.value} 的旧配置，使用默认值。")
+            logger.info(f"没有找到 {platform.value} 的旧配置，这是首次初始化。")
             old_platform_data = self._create_empty_platform_config()
         old_platform_data = self.parse_config_data(old_platform_data)
 
@@ -358,12 +366,15 @@ class UpdateChecker:
 
         await self.save_config(new_remote_data, platform)
 
-        return ConfigUpdate(old=old_platform_data, new=new_platform_data, updated=updated)
+        return (
+            ConfigUpdate(old=old_platform_data, new=new_platform_data, updated=updated),
+            is_first_init,
+        )
 
     async def check_platform_updates(self, platform: Platform) -> UpdateCheckResult:
         logger.debug(f"检查 {platform.value} 平台更新")
 
-        result = await self.check_single_config(platform)
+        result, is_first_init = await self.check_single_config(platform)
 
         network_config_update = ConfigUpdate(
             old=result.old.get("network_config", {}),
@@ -407,6 +418,7 @@ class UpdateChecker:
             engine_config=engine_config_update,
             launcher_version=launcher_version_update,
             platform=platform,
+            is_first_init=is_first_init,
         )
 
 
