@@ -13,7 +13,7 @@ class UpdateConfig:
     PRIORITY_MAP: ClassVar[dict[str, UpdatePriority]] = {
         "launcher_version": UpdatePriority.LOW,
         "res_version": UpdatePriority.CRITICAL,
-        "server_config": UpdatePriority.MEDIUM,
+        "engine_config": UpdatePriority.LOW,
         "game_config": UpdatePriority.MEDIUM,
         "network_config": UpdatePriority.HIGH,
     }
@@ -45,14 +45,20 @@ class ConfigType(StrEnum):
     NETWORK_CONFIG = "network_config"
     GAME_CONFIG = "game_config"
     RES_VERSION = "res_version"
-    SERVER_CONFIG = "server_config"
+    ENGINE_CONFIG = "engine_config"
     LAUNCHER_VERSION = "launcher_version"
 
 
 REMOTE_CONFIG_URLS = {
-    ConfigType.NETWORK_CONFIG: "https://game-config.hypergryph.com/api/remote_config/get_remote_config/3/prod-cbt3/default/{device}/network_config",
-    ConfigType.GAME_CONFIG: "https://game-config.hypergryph.com/api/remote_config/get_remote_config/3/prod-cbt3/default/{device}/game_config",
-    ConfigType.RES_VERSION: "https://game-config.hypergryph.com/api/remote_config/get_remote_config/3/prod-cbt3/default/{device}/res_version",
-    ConfigType.SERVER_CONFIG: "https://game-config.hypergryph.com/api/remote_config/get_remote_config/3/prod-cbt3/default/{device}/server_config_China",
-    ConfigType.LAUNCHER_VERSION: "https://launcher.hypergryph.com/api/game/get_latest?appcode=CAdYGoQmEUZnxXGf&channel=1",
+    ConfigType.ENGINE_CONFIG: "https://game-config.hypergryph.com/api/remote_config/3/prod-engine/default/{device}/engine_config",
+    ConfigType.NETWORK_CONFIG: "https://game-config.hypergryph.com/api/remote_config/v2/3/prod-obt/default/{device}/network_config",
+    ConfigType.GAME_CONFIG: "https://game-config.hypergryph.com/api/remote_config/v2/3/prod-obt/default/{device}/game_config",
+    ConfigType.LAUNCHER_VERSION: "https://launcher.hypergryph.com/api/game/get_latest?appcode=6LL0KJuqHBVz33WK&channel=1&platform={device}&sub_channel=1&source=game",
+    ConfigType.RES_VERSION: "https://launcher.hypergryph.com/api/game/get_latest_resources?appcode=6LL0KJuqHBVz33WK&platform={device}&game_version=1.0&version={version}&rand_str={rand_str}",
 }
+
+APPCODE = "6LL0KJuqHBVz33WK"
+
+DEFAULT_VERSION = "1.0.13"
+
+ENCRYPTED_CONFIG_TYPES = {ConfigType.NETWORK_CONFIG, ConfigType.GAME_CONFIG}

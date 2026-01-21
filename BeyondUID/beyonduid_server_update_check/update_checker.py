@@ -9,27 +9,27 @@ from gsuid_core.data_store import get_res_path
 from gsuid_core.logger import aiofiles, logger
 from pydantic import BaseModel, ValidationError
 
-from .config import REMOTE_CONFIG_URLS, ConfigType
+from .config import (
+    DEFAULT_VERSION,
+    ENCRYPTED_CONFIG_TYPES,
+    REMOTE_CONFIG_URLS,
+    ConfigType,
+)
 from .model import (
     ConfigUpdate,
-    GameConfigWithError,
+    EngineConfig,
     LauncherVersion,
-    LauncherVersionWithError,
     NetworkConfig,
-    NetworkConfigWithError,
     Platform,
     PlatformLocalConfig,
     RemoteConfigDataWithUUID,
-    RemoteConfigError,
     RemoteConfigLocalStorage,
     RemoteConfigRemoteData,
-    RemoteDataItem,
     ResVersion,
-    ResVersionWithError,
-    ServerConfig,
-    ServerConfigWithError,
+    U8Config,
     UpdateCheckResult,
 )
+from .utils import RemoteConfigUtils, U8ConfigUtils, normalize_data_for_comparison
 
 REQUEST_TIMEOUT = 30
 
@@ -37,7 +37,9 @@ REQUEST_TIMEOUT = 30
 class UpdateChecker:
     def __init__(self):
         self.session: aiohttp.ClientSession | None = None
-        self.config_file_path = get_res_path("BeyondUID") / "remote_config_storage.json"
+        self.config_file_path = get_res_path("BeyondUID") / "remote_config_storage_v2.json"
+        self._cached_version: str = DEFAULT_VERSION
+        self._cached_rand_str: str = ""
 
     @asynccontextmanager
     async def get_session(self):
@@ -51,47 +53,88 @@ class UpdateChecker:
     def _convert_to_model[T: BaseModel](
         data: dict[str, Any],
         model: type[T],
-    ) -> T | RemoteConfigError:
+    ) -> T | None:
         try:
-            return RemoteConfigError.model_validate(data)
-        except ValidationError:
-            try:
-                return model.model_validate(data)
-            except ValidationError as e:
-                logger.error(f"Failed to validate data with model {model.__name__}: {e}")
-                return RemoteConfigError(
-                    code=500,
-                    reason="Validation Error",
-                    message=f"Data validation failed for {model.__name__}",
-                    metadata=data,
-                )
+            return model.model_validate(data)
+        except ValidationError as e:
+            logger.error(f"Failed to validate data with model {model.__name__}: {e}")
+            return None
 
-    async def _fetch_single_config(
-        self, url: str, config_type: ConfigType
-    ) -> RemoteDataItem | None:
+    def _build_url(self, url_template: str, platform: Platform) -> str:
+        return url_template.format(
+            device=platform.value,
+            version=self._cached_version,
+            rand_str=self._cached_rand_str,
+        )
+
+    async def _fetch_and_decrypt_u8_config(self, file_path_url: str) -> U8Config | None:
+        try:
+            target_url = file_path_url + "/U8Data/config/u8ExtraConfig.bin"
+            async with self.get_session() as session:
+                async with session.get(target_url) as response:
+                    if response.status != 200:
+                        logger.warning(
+                            f"Failed to fetch U8 config from {target_url}: "
+                            f"status {response.status}"
+                        )
+                        return None
+                    encrypted_bytes = await response.read()
+
+            decrypted_bytes = U8ConfigUtils.decrypt_bin(encrypted_bytes)
+
+            decrypted_text = decrypted_bytes.decode("utf-8")
+            data = json.loads(decrypted_text)
+            return self._convert_to_model(data, U8Config)
+
+        except aiohttp.ClientError as e:
+            logger.warning(f"Network error fetching U8 config: {e}")
+            return None
+        except Exception as e:
+            logger.warning(f"Failed to decrypt U8 config: {e}")
+            return None
+
+    async def _fetch_single_config(self, url: str, config_type: ConfigType) -> Any | None:
         try:
             async with self.get_session() as session:
                 async with session.get(url) as response:
                     text = await response.text()
-            data = json.loads(text)
 
-            if config_type == ConfigType.GAME_CONFIG:
-                if isinstance(data, dict) and "code" in data and "msg" in data:
-                    return RemoteConfigError.model_validate(data)
+            if config_type in ENCRYPTED_CONFIG_TYPES:
+                try:
+                    data = json.loads(text)
+                    logger.debug(f"{config_type.value} is plain JSON, skipping decryption")
+                except json.JSONDecodeError:
+                    try:
+                        decrypted_text = RemoteConfigUtils.get_text(text)
+                        data = json.loads(decrypted_text)
+                    except Exception as e:
+                        logger.warning(f"Failed to decrypt {config_type.value}: {e}")
+                        logger.debug(f"Response content (first 100 chars): {text[:100]}")
+                        return None
+            else:
+                data = json.loads(text)
+
+            model_map = {
+                ConfigType.NETWORK_CONFIG: NetworkConfig,
+                ConfigType.ENGINE_CONFIG: EngineConfig,
+                ConfigType.RES_VERSION: ResVersion,
+                ConfigType.LAUNCHER_VERSION: LauncherVersion,
+            }
+
+            model = model_map.get(config_type)
+            if model:
+                result = self._convert_to_model(data, model)
+                if result is None:
+                    logger.warning(
+                        f"Model validation failed for {config_type.value}, using raw data"
+                    )
+                    return data
+                return result
+            elif config_type == ConfigType.GAME_CONFIG:
                 return data
             else:
-                model_map = {
-                    ConfigType.NETWORK_CONFIG: NetworkConfig,
-                    ConfigType.RES_VERSION: ResVersion,
-                    ConfigType.SERVER_CONFIG: ServerConfig,
-                    ConfigType.LAUNCHER_VERSION: LauncherVersion,
-                }
-                model = model_map.get(config_type)
-                if model:
-                    return self._convert_to_model(data, model)
-                else:
-                    logger.error(f"Unknown config type: {config_type}")
-                    return None
+                logger.error(f"Unknown config type: {config_type}")
+                return None
 
         except aiohttp.ClientError as e:
             logger.error(f"网络请求失败或响应错误 {config_type.value}: {e}")
@@ -104,9 +147,11 @@ class UpdateChecker:
             return None
 
     async def fetch_config(self, platform: Platform) -> RemoteConfigRemoteData | None:
-        results = {}
+        results: dict[str, Any] = {}
+
         for config_type, url_template in REMOTE_CONFIG_URLS.items():
-            url = url_template.format(device=platform.value)
+            url = self._build_url(url_template, platform)
+
             config_data = await self._fetch_single_config(url, config_type)
             if config_data is None:
                 logger.error(
@@ -116,10 +161,20 @@ class UpdateChecker:
                 return None
             results[config_type.name.lower()] = config_data
 
+        launcher_data = results["launcher_version"]
+        if isinstance(launcher_data, LauncherVersion) and platform == Platform.WINDOWS:
+            self._cached_version = launcher_data.version
+            if launcher_data.pkg and launcher_data.pkg.file_path:
+                file_path_url = launcher_data.pkg.file_path
+                u8_config = await self._fetch_and_decrypt_u8_config(file_path_url)
+                if u8_config and u8_config.randStr:
+                    self._cached_rand_str = u8_config.randStr
+                    logger.debug(f"Successfully extracted randStr: {u8_config.randStr}")
+
         return RemoteConfigRemoteData(
             network_config=results.get("network_config", NetworkConfig()),
             res_version=results.get("res_version", ResVersion()),
-            server_config=results.get("server_config", ServerConfig()),
+            engine_config=results.get("engine_config", EngineConfig()),
             launcher_version=results.get("launcher_version", LauncherVersion()),
             game_config=results.get("game_config", {}),
         )
@@ -127,7 +182,7 @@ class UpdateChecker:
     async def load_cached_config(self) -> RemoteConfigLocalStorage:
         if not self.config_file_path.exists():
             logger.info("缓存配置文件不存在，将创建新的空配置。")
-            return RemoteConfigLocalStorage(version="1.0", platforms={})
+            return RemoteConfigLocalStorage(version="2.0", platforms={})
 
         try:
             async with aiofiles.open(self.config_file_path, "r", encoding="utf-8") as f:
@@ -135,7 +190,26 @@ class UpdateChecker:
                 return RemoteConfigLocalStorage.model_validate_json(content)
         except Exception as e:
             logger.error(f"加载缓存配置失败或配置损坏: {e}.")
-            return RemoteConfigLocalStorage(version="1.0", platforms={})
+            return RemoteConfigLocalStorage(version="2.0", platforms={})
+
+    def _create_empty_platform_config(self) -> PlatformLocalConfig:
+        return PlatformLocalConfig(
+            network_config=RemoteConfigDataWithUUID[NetworkConfig](
+                data={}, last_updated="", last_uuid=UUID(int=0)
+            ),
+            res_version=RemoteConfigDataWithUUID[ResVersion](
+                data={}, last_updated="", last_uuid=UUID(int=0)
+            ),
+            engine_config=RemoteConfigDataWithUUID[EngineConfig](
+                data={}, last_updated="", last_uuid=UUID(int=0)
+            ),
+            game_config=RemoteConfigDataWithUUID[dict[str, Any]](
+                data={}, last_updated="", last_uuid=UUID(int=0)
+            ),
+            launcher_version=RemoteConfigDataWithUUID[LauncherVersion](
+                data={}, last_updated="", last_uuid=UUID(int=0)
+            ),
+        )
 
     async def save_config(
         self, new_remote_data: RemoteConfigRemoteData, platform: Platform
@@ -144,27 +218,11 @@ class UpdateChecker:
         current_time = datetime.now().isoformat()
 
         if platform not in storage.platforms:
-            storage.platforms[platform] = PlatformLocalConfig(
-                network_config=RemoteConfigDataWithUUID[NetworkConfigWithError](
-                    data={}, last_updated="", last_uuid=UUID(int=0)
-                ),
-                res_version=RemoteConfigDataWithUUID[ResVersionWithError](
-                    data={}, last_updated="", last_uuid=UUID(int=0)
-                ),
-                server_config=RemoteConfigDataWithUUID[ServerConfigWithError](
-                    data={}, last_updated="", last_uuid=UUID(int=0)
-                ),
-                game_config=RemoteConfigDataWithUUID[GameConfigWithError](
-                    data={}, last_updated="", last_uuid=UUID(int=0)
-                ),
-                launcher_version=RemoteConfigDataWithUUID[LauncherVersionWithError](
-                    data={}, last_updated="", last_uuid=UUID(int=0)
-                ),
-            )
+            storage.platforms[platform] = self._create_empty_platform_config()
 
         def _update_config_type_storage(
             storage_data_with_uuid: RemoteConfigDataWithUUID,
-            remote_data_item: RemoteDataItem,
+            remote_data_item: Any,
             config_name: str,
         ) -> RemoteConfigDataWithUUID:
             last_saved_data = None
@@ -182,7 +240,9 @@ class UpdateChecker:
             if isinstance(current_data_to_compare, BaseModel):
                 current_data_to_compare = current_data_to_compare.model_dump(mode="json")
 
-            if last_saved_data == current_data_to_compare:
+            if normalize_data_for_comparison(last_saved_data) == normalize_data_for_comparison(
+                current_data_to_compare
+            ):
                 storage_data_with_uuid.last_updated = current_time
                 logger.debug(f"配置 for {platform.value} - {config_name} 未改变。")
             else:
@@ -211,10 +271,10 @@ class UpdateChecker:
             new_remote_data.res_version,
             "res_version",
         )
-        storage.platforms[platform].server_config = _update_config_type_storage(
-            storage.platforms[platform].server_config,
-            new_remote_data.server_config,
-            "server_config",
+        storage.platforms[platform].engine_config = _update_config_type_storage(
+            storage.platforms[platform].engine_config,
+            new_remote_data.engine_config,
+            "engine_config",
         )
         storage.platforms[platform].launcher_version = _update_config_type_storage(
             storage.platforms[platform].launcher_version,
@@ -227,9 +287,7 @@ class UpdateChecker:
             "game_config",
         )
 
-        # Ensure the parent directory exists
         self.config_file_path.parent.mkdir(parents=True, exist_ok=True)
-        # Dump the entire storage to JSON
         storage_json = storage.model_dump_json(indent=4)
         async with aiofiles.open(self.config_file_path, "w", encoding="utf-8") as f:
             await f.write(storage_json)
@@ -253,7 +311,7 @@ class UpdateChecker:
             return {
                 "network_config": data.network_config.model_dump(mode="json"),
                 "res_version": data.res_version.model_dump(mode="json"),
-                "server_config": data.server_config.model_dump(mode="json"),
+                "engine_config": data.engine_config.model_dump(mode="json"),
                 "launcher_version": data.launcher_version.model_dump(mode="json"),
                 "game_config": data.game_config
                 if isinstance(data.game_config, dict)
@@ -264,7 +322,7 @@ class UpdateChecker:
             for config_type_str in [
                 "network_config",
                 "res_version",
-                "server_config",
+                "engine_config",
                 "launcher_version",
                 "game_config",
             ]:
@@ -282,35 +340,21 @@ class UpdateChecker:
         old_platform_data = old_storage.platforms.get(platform, None)
         if old_platform_data is None:
             logger.info(f"没有找到 {platform.value} 的旧配置，使用默认值。")
-            old_platform_data = PlatformLocalConfig(
-                network_config=RemoteConfigDataWithUUID[NetworkConfigWithError](
-                    data={}, last_updated="", last_uuid=UUID(int=0)
-                ),
-                res_version=RemoteConfigDataWithUUID[ResVersionWithError](
-                    data={}, last_updated="", last_uuid=UUID(int=0)
-                ),
-                server_config=RemoteConfigDataWithUUID[ServerConfigWithError](
-                    data={}, last_updated="", last_uuid=UUID(int=0)
-                ),
-                game_config=RemoteConfigDataWithUUID[GameConfigWithError](
-                    data={}, last_updated="", last_uuid=UUID(int=0)
-                ),
-                launcher_version=RemoteConfigDataWithUUID[LauncherVersionWithError](
-                    data={}, last_updated="", last_uuid=UUID(int=0)
-                ),
-            )
+            old_platform_data = self._create_empty_platform_config()
         old_platform_data = self.parse_config_data(old_platform_data)
 
         parsed_new = self.parse_config_data(new_remote_data)
         new_platform_data = {
             "network_config": parsed_new["network_config"],
             "res_version": parsed_new["res_version"],
-            "server_config": parsed_new["server_config"],
+            "engine_config": parsed_new["engine_config"],
             "launcher_version": parsed_new["launcher_version"],
             "game_config": parsed_new["game_config"],
         }
 
-        updated = old_platform_data != new_platform_data
+        updated = normalize_data_for_comparison(
+            old_platform_data
+        ) != normalize_data_for_comparison(new_platform_data)
 
         await self.save_config(new_remote_data, platform)
 
@@ -324,39 +368,43 @@ class UpdateChecker:
         network_config_update = ConfigUpdate(
             old=result.old.get("network_config", {}),
             new=result.new.get("network_config", {}),
-            updated=result.old.get("network_config", {}) != result.new.get("network_config", {}),
+            updated=normalize_data_for_comparison(result.old.get("network_config", {}))
+            != normalize_data_for_comparison(result.new.get("network_config", {})),
         )
 
         game_config_update = ConfigUpdate(
             old=result.old.get("game_config", {}),
             new=result.new.get("game_config", {}),
-            updated=result.old.get("game_config", {}) != result.new.get("game_config", {}),
+            updated=normalize_data_for_comparison(result.old.get("game_config", {}))
+            != normalize_data_for_comparison(result.new.get("game_config", {})),
         )
 
         res_version_update = ConfigUpdate(
             old=result.old.get("res_version", {}),
             new=result.new.get("res_version", {}),
-            updated=result.old.get("res_version", {}) != result.new.get("res_version", {}),
+            updated=normalize_data_for_comparison(result.old.get("res_version", {}))
+            != normalize_data_for_comparison(result.new.get("res_version", {})),
         )
 
-        server_config_update = ConfigUpdate(
-            old=result.old.get("server_config", {}),
-            new=result.new.get("server_config", {}),
-            updated=result.old.get("server_config", {}) != result.new.get("server_config", {}),
+        engine_config_update = ConfigUpdate(
+            old=result.old.get("engine_config", {}),
+            new=result.new.get("engine_config", {}),
+            updated=normalize_data_for_comparison(result.old.get("engine_config", {}))
+            != normalize_data_for_comparison(result.new.get("engine_config", {})),
         )
 
         launcher_version_update = ConfigUpdate(
             old=result.old.get("launcher_version", {}),
             new=result.new.get("launcher_version", {}),
-            updated=result.old.get("launcher_version", {})
-            != result.new.get("launcher_version", {}),
+            updated=normalize_data_for_comparison(result.old.get("launcher_version", {}))
+            != normalize_data_for_comparison(result.new.get("launcher_version", {})),
         )
 
         return UpdateCheckResult(
             network_config=network_config_update,
             game_config=game_config_update,
             res_version=res_version_update,
-            server_config=server_config_update,
+            engine_config=engine_config_update,
             launcher_version=launcher_version_update,
             platform=platform,
         )

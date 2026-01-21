@@ -14,12 +14,12 @@ from pydantic import BaseModel
 from .config import UpdateConfig
 from .model import (
     ConfigUpdate,
+    EngineConfig,
     LauncherVersion,
     NetworkConfig,
     Platform,
     RemoteConfigError,
     ResVersion,
-    ServerConfig,
     UpdateCheckResult,
 )
 from .update_checker import UpdateChecker, update_checker
@@ -30,6 +30,42 @@ sv_server_check_sub = SV("订阅终末地版本更新", pm=3)
 TASK_NAME_SERVER_CHECK = "订阅终末地版本更新"
 CHECK_INTERVAL_SECONDS = 10
 
+SEPARATOR = "━" * 24
+THIN_SEPARATOR = "─" * 24
+
+
+class OutputFormatter:
+    @staticmethod
+    def format_header(title: str) -> str:
+        return f"{title}\n{SEPARATOR}"
+
+    @staticmethod
+    def format_section(title: str, content: str) -> str:
+        return f"[{title}]\n{content}"
+
+    @staticmethod
+    def format_change(label: str, old_value: Any, new_value: Any, indent: int = 2) -> str:
+        prefix = " " * indent
+        return f"{prefix}{label}: {old_value} → {new_value}"
+
+    @staticmethod
+    def format_new_item(label: str, value: Any, indent: int = 2) -> str:
+        prefix = " " * indent
+        return f"{prefix}+ {label}: {value}"
+
+    @staticmethod
+    def format_deleted_item(label: str, value: Any, indent: int = 2) -> str:
+        prefix = " " * indent
+        return f"{prefix}- {label}: {value}"
+
+    @staticmethod
+    def format_key_value(label: str, value: Any, width: int = 10) -> str:
+        return f"{label.ljust(width)}: {value}"
+
+    @staticmethod
+    def format_bool(value: bool) -> str:
+        return "是" if value else "否"
+
 
 class NotificationManager:
     @staticmethod
@@ -39,7 +75,7 @@ class NotificationManager:
                 result.network_config.updated,
                 result.game_config.updated,
                 result.res_version.updated,
-                result.server_config.updated,
+                result.engine_config.updated,
                 result.launcher_version.updated,
             ]
         )
@@ -71,20 +107,26 @@ class NotificationManager:
 
         if update_keys:
             updates = [
-                f"  - {key}: {old_dict.get(key)} → {new_dict.get(key)}"
+                OutputFormatter.format_change(key, old_dict.get(key), new_dict.get(key))
                 for key in sorted(update_keys)
             ]
-            messages.append("Update:\n" + "\n".join(updates))
+            messages.extend(updates)
 
         if new_keys:
-            new_items = [f"  - {key}: {new_dict.get(key)}" for key in sorted(new_keys)]
-            messages.append("New:\n" + "\n".join(new_items))
+            new_items = [
+                OutputFormatter.format_new_item(key, new_dict.get(key))
+                for key in sorted(new_keys)
+            ]
+            messages.extend(new_items)
 
         if delete_keys:
-            deleted_items = [f"  - {key}: {old_dict.get(key)}" for key in sorted(delete_keys)]
-            messages.append("Delete:\n" + "\n".join(deleted_items))
+            deleted_items = [
+                OutputFormatter.format_deleted_item(key, old_dict.get(key))
+                for key in sorted(delete_keys)
+            ]
+            messages.extend(deleted_items)
 
-        return "\n\n".join(messages) if messages else "No changes detected"
+        return "\n".join(messages) if messages else "  无变化"
 
     @staticmethod
     def _build_error_message(error_obj: RemoteConfigError | dict[str, Any]) -> str:
@@ -98,7 +140,7 @@ class NotificationManager:
             return NotificationManager._build_error_message(data)
 
         if data is None:
-            return "No data available"
+            return "无数据"
 
         if isinstance(data, BaseModel):
             return data.model_dump_json(indent=2)
@@ -118,8 +160,49 @@ class NotificationManager:
     def safe_convert_to_model[T: BaseModel](data: dict[str, Any], model: type[T]) -> T:
         try:
             return model.model_validate(data)
-        except Exception as _:
+        except Exception:
             return model()
+
+    @staticmethod
+    def _format_engine_config_changes(old_data: dict, new_data: dict) -> str:
+        """Format engine config changes with parsed Configs"""
+        old_configs_str = old_data.get("Configs", "{}")
+        new_configs_str = new_data.get("Configs", "{}")
+
+        try:
+            old_configs = json.loads(old_configs_str) if old_configs_str else {}
+            new_configs = json.loads(new_configs_str) if new_configs_str else {}
+        except json.JSONDecodeError:
+            old_configs = {}
+            new_configs = {}
+
+        messages = []
+
+        # Check for version changes
+        old_version = old_data.get("Version", 0)
+        new_version = new_data.get("Version", 0)
+        if old_version != new_version:
+            messages.append(OutputFormatter.format_change("Version", old_version, new_version))
+
+        # Check for config entry changes
+        old_keys = set(old_configs.keys())
+        new_keys = set(new_configs.keys())
+
+        added_keys = new_keys - old_keys
+        removed_keys = old_keys - new_keys
+        common_keys = old_keys & new_keys
+
+        for key in sorted(added_keys):
+            messages.append(OutputFormatter.format_new_item(key, "新增配置项"))
+
+        for key in sorted(removed_keys):
+            messages.append(OutputFormatter.format_deleted_item(key, "已移除"))
+
+        for key in sorted(common_keys):
+            if old_configs[key] != new_configs[key]:
+                messages.append(OutputFormatter.format_change(key, "已修改", "详见配置"))
+
+        return "\n".join(messages) if messages else "  无变化"
 
     @staticmethod
     def _build_single_update_content(result: UpdateCheckResult) -> list[dict[str, Any]]:
@@ -128,7 +211,7 @@ class NotificationManager:
         update_types_info = [
             ("launcher_version", "客户端版本更新"),
             ("res_version", "资源版本更新"),
-            ("server_config", "服务器配置更新"),
+            ("engine_config", "引擎配置更新"),
             ("game_config", "游戏配置更新"),
             ("network_config", "网络配置更新"),
         ]
@@ -144,65 +227,94 @@ class NotificationManager:
                 is_new_error = NotificationManager.is_error(new_data)
 
                 if not is_old_error and is_new_error:
-                    content_old = NotificationManager._get_data_representation(old_data)
                     content_new = NotificationManager._get_data_representation(new_data)
                     updates.append(
                         {
                             "type": "error_detected",
                             "priority": UpdateConfig.get_priority("error_detected"),
-                            "title": f"{title_prefix}：检测到配置错误",
-                            "content": f"原配置:\n{content_old}\n\n新状态: 错误\n{content_new}",
+                            "title": f"{title_prefix} - 检测到错误",
+                            "content": f"  原配置正常\n  新状态: 错误\n  {content_new}",
                         }
                     )
                 elif is_old_error and not is_new_error:
-                    content_old = NotificationManager._get_data_representation(old_data)
-                    content_new = NotificationManager._get_data_representation(new_data)
                     updates.append(
                         {
                             "type": "error_resolved",
                             "priority": UpdateConfig.get_priority("error_resolved"),
-                            "title": f"{title_prefix}：配置错误已解决",
-                            "content": f"原状态: 错误\n{content_old}\n\n新配置:\n{content_new}",
+                            "title": f"{title_prefix} - 错误已解决",
+                            "content": "  配置已恢复正常",
                         }
                     )
                 elif is_old_error and is_new_error:
                     if old_data != new_data:
                         content_new = NotificationManager._get_data_representation(new_data)
-                        content_old = NotificationManager._get_data_representation(old_data)
                         updates.append(
                             {
                                 "type": "error_detected",
                                 "priority": UpdateConfig.get_priority("error_detected"),
-                                "title": f"{title_prefix}：配置错误详情更新",
-                                "content": f"原错误:\n{content_old}\n\n新错误:\n{content_new}",
+                                "title": f"{title_prefix} - 错误详情更新",
+                                "content": f"  {content_new}",
                             }
                         )
                 elif not is_old_error and not is_new_error:
                     content = ""
                     if attr_name == "launcher_version":
-                        old_data = NotificationManager.safe_convert_to_model(
+                        old_model = NotificationManager.safe_convert_to_model(
                             old_data, LauncherVersion
                         )
-                        new_data = NotificationManager.safe_convert_to_model(
+                        new_model = NotificationManager.safe_convert_to_model(
                             new_data, LauncherVersion
                         )
-                        content = f"version: {old_data.version} → {new_data.version}"
+                        content = OutputFormatter.format_change(
+                            "版本", old_model.version, new_model.version
+                        )
                     elif attr_name == "res_version":
-                        old_data = NotificationManager.safe_convert_to_model(old_data, ResVersion)
-                        new_data = NotificationManager.safe_convert_to_model(new_data, ResVersion)
-                        content = f"version: {old_data.version} → {new_data.version}"
-                        if new_data.kickFlag != old_data.kickFlag:
-                            content += f"\nkickFlag: {old_data.kickFlag} → {new_data.kickFlag}"
-                    elif attr_name == "server_config":
-                        old_data = NotificationManager.safe_convert_to_model(
-                            old_data, ServerConfig
+                        old_model = NotificationManager.safe_convert_to_model(
+                            old_data, ResVersion
                         )
-                        new_data = NotificationManager.safe_convert_to_model(
-                            new_data, ServerConfig
+                        new_model = NotificationManager.safe_convert_to_model(
+                            new_data, ResVersion
                         )
-                        content = (
-                            f"addr: {old_data.addr} → {new_data.addr}\n"
-                            f"port: {old_data.port} → {new_data.port}"
+                        changes = []
+
+                        # Check res_version string changes
+                        if new_model.res_version != old_model.res_version:
+                            changes.append(
+                                OutputFormatter.format_change(
+                                    "资源版本",
+                                    old_model.res_version or "无",
+                                    new_model.res_version or "无",
+                                )
+                            )
+
+                        # Check kick_flag changes
+                        old_kick = old_model.get_parsed_configs().kick_flag
+                        new_kick = new_model.get_parsed_configs().kick_flag
+                        if old_kick != new_kick:
+                            changes.append(
+                                OutputFormatter.format_change(
+                                    "踢出标记",
+                                    OutputFormatter.format_bool(old_kick),
+                                    OutputFormatter.format_bool(new_kick),
+                                )
+                            )
+
+                        # Check resource changes
+                        old_resources = {r.name: r.version for r in old_model.resources}
+                        new_resources = {r.name: r.version for r in new_model.resources}
+                        for name, version in new_resources.items():
+                            old_ver = old_resources.get(name)
+                            if old_ver != version:
+                                changes.append(
+                                    OutputFormatter.format_change(
+                                        f"资源[{name}]", old_ver or "无", version
+                                    )
+                                )
+
+                        content = "\n".join(changes) if changes else ""
+                    elif attr_name == "engine_config":
+                        content = NotificationManager._format_engine_config_changes(
+                            old_data, new_data
                         )
                     elif attr_name in ["game_config", "network_config"]:
                         content = NotificationManager.format_dict_changes(old_data, new_data)
@@ -234,9 +346,9 @@ class NotificationManager:
         highest_priority = updates_list[0]["priority"]
         header_icon = UpdateConfig.get_icon(highest_priority)
 
-        header = f"{header_icon} 检测到{platform_name}终末地更新"
+        header = f"{header_icon} 检测到 {platform_name} 终末地更新"
         content = "\n\n".join(messages)
-        full_message = f"{header}\n\n{content}"
+        full_message = f"{header}\n{SEPARATOR}\n{content}\n{SEPARATOR}"
 
         return full_message
 
@@ -255,7 +367,7 @@ class NotificationManager:
                 continue
 
             platform_name = (
-                "Windows端" if result.platform == Platform.DEFAULT else f"{result.platform}端"
+                "Windows 端" if result.platform == Platform.DEFAULT else f"{result.platform} 端"
             )
 
             platform_updates = NotificationManager._build_single_update_content(result)
@@ -280,7 +392,7 @@ class NotificationManager:
         for update_content_str, platforms_with_same_update in grouped_messages.items():
             if len(platforms_with_same_update) > 1:
                 platform_names = [
-                    "Windows端" if p == Platform.DEFAULT else f"{p.value}端"
+                    "Windows 端" if p == Platform.DEFAULT else f"{p.value} 端"
                     for p in platforms_with_same_update
                 ]
 
@@ -295,18 +407,21 @@ class NotificationManager:
                 )["priority"]
                 header_icon = UpdateConfig.get_icon(highest_priority)
 
-                consolidated_header = f"{header_icon} 检测到{'、'.join(platform_names)}终末地更新"
+                consolidated_header = (
+                    f"{header_icon} 检测到 {'、'.join(platform_names)} 终末地更新"
+                )
 
                 original_full_message = full_update_details[update_content_str]
-                content_part = "\n\n".join(original_full_message.split("\n\n")[1:])
+                parts = original_full_message.split(SEPARATOR)
+                content_part = SEPARATOR.join(parts[1:]) if len(parts) > 1 else ""
 
-                messages_to_send.append(f"{consolidated_header}\n\n{content_part}")
+                messages_to_send.append(f"{consolidated_header}\n{SEPARATOR}{content_part}")
 
-                logger.warning(f"检测到{'、'.join(platform_names)}终末地更新 (内容一致)")
+                logger.warning(f"检测到 {'、'.join(platform_names)} 终末地更新 (内容一致)")
             else:
                 platform = platforms_with_same_update[0]
                 platform_name = (
-                    "Windows端" if platform == Platform.DEFAULT else f"{platform.value}端"
+                    "Windows 端" if platform == Platform.DEFAULT else f"{platform.value} 端"
                 )
 
                 messages_to_send.append(full_update_details[update_content_str])
@@ -317,13 +432,13 @@ class NotificationManager:
                     update_types.append("客户端版本")
                 if single_platform_result.res_version.updated:
                     update_types.append("资源版本")
-                if single_platform_result.server_config.updated:
-                    update_types.append("服务器配置")
+                if single_platform_result.engine_config.updated:
+                    update_types.append("引擎配置")
                 if single_platform_result.game_config.updated:
                     update_types.append("游戏配置")
                 if single_platform_result.network_config.updated:
                     update_types.append("网络配置")
-                logger.warning(f"检测到{platform_name}终末地更新: {', '.join(update_types)}")
+                logger.warning(f"检测到 {platform_name} 终末地更新: {', '.join(update_types)}")
 
         failed_count = 0
         success_count = 0
@@ -340,7 +455,45 @@ class NotificationManager:
                     failed_count += 1
                     logger.error(f"发送通知失败 (群{subscribe.group_id}): {e}")
 
-        logger.info(f"更新通知发送完成: 成功{success_count}次，失败{failed_count}次")
+        logger.info(f"更新通知发送完成: 成功 {success_count} 次，失败 {failed_count} 次")
+
+
+def _format_version_info(
+    platform_name: str,
+    launcher_data: LauncherVersion | RemoteConfigError,
+    res_data: ResVersion | RemoteConfigError,
+) -> str:
+    """Format version info with beautified output"""
+    lines = [
+        f"终末地版本信息 ({platform_name})",
+        SEPARATOR,
+    ]
+
+    # Client version
+    if isinstance(launcher_data, LauncherVersion):
+        lines.append(OutputFormatter.format_key_value("客户端版本", launcher_data.version))
+    else:
+        err_msg = f"错误: {launcher_data.reason}"
+        lines.append(OutputFormatter.format_key_value("客户端版本", err_msg))
+
+    # Resource version
+    if isinstance(res_data, ResVersion):
+        lines.append(
+            OutputFormatter.format_key_value("资源版本", res_data.res_version or "未知")
+        )
+        kick_flag_str = OutputFormatter.format_bool(res_data.get_parsed_configs().kick_flag)
+        lines.append(OutputFormatter.format_key_value("踢出标记", kick_flag_str))
+        # Display individual resource versions
+        for resource in res_data.resources:
+            lines.append(
+                OutputFormatter.format_key_value(f"  {resource.name}", resource.version)
+            )
+    else:
+        err_msg = f"错误: {res_data.reason}"
+        lines.append(OutputFormatter.format_key_value("资源版本", err_msg))
+
+    lines.append(SEPARATOR)
+    return "\n".join(lines)
 
 
 @sv_server_check.on_command("取Android端最新版本")
@@ -357,25 +510,19 @@ async def get_latest_version_android(bot: Bot, ev: Event):
             ResVersion,
         )
 
-        clientVersion = (
-            f"clientVersion: {launcher_data.version}"
-            if isinstance(launcher_data, LauncherVersion)
-            else f"clientVersion: {launcher_data.reason} - {launcher_data.message}"
-        )
-        resVersion = (
-            f"resVersion: {res_version_data.version}"
-            if isinstance(res_version_data, ResVersion)
-            else f"resVersion: {res_version_data.reason} - {res_version_data.message}"
-        )
-        kickFlag = (
-            res_version_data.kickFlag
-            if isinstance(res_version_data, ResVersion)
-            else f"kickFlag: {res_version_data.reason} - {res_version_data.message}"
-        )
+        if launcher_data is None:
+            launcher_data = RemoteConfigError(
+                code=-1, reason="解析失败", message="无法解析客户端版本"
+            )
+        if res_version_data is None:
+            res_version_data = RemoteConfigError(
+                code=-1, reason="解析失败", message="无法解析资源版本"
+            )
 
-        await bot.send(f"终末地版本信息(Android):\n{clientVersion}\n{resVersion}\n{kickFlag}")
+        message = _format_version_info("Android", launcher_data, res_version_data)
+        await bot.send(message)
     except Exception as e:
-        logger.error(f"获取Android端版本失败: {e}")
+        logger.error(f"获取 Android 端版本失败: {e}")
         await bot.send("获取版本信息失败，请稍后重试")
 
 
@@ -393,25 +540,19 @@ async def get_latest_version_windows(bot: Bot, ev: Event):
             ResVersion,
         )
 
-        clientVersion = (
-            f"clientVersion: {launcher_data.version}"
-            if isinstance(launcher_data, LauncherVersion)
-            else f"clientVersion: {launcher_data.reason} - {launcher_data.message}"
-        )
-        resVersion = (
-            f"resVersion: {res_version_data.version}"
-            if isinstance(res_version_data, ResVersion)
-            else f"resVersion: {res_version_data.reason} - {res_version_data.message}"
-        )
-        kickFlag = (
-            res_version_data.kickFlag
-            if isinstance(res_version_data, ResVersion)
-            else f"kickFlag: {res_version_data.reason} - {res_version_data.message}"
-        )
+        if launcher_data is None:
+            launcher_data = RemoteConfigError(
+                code=-1, reason="解析失败", message="无法解析客户端版本"
+            )
+        if res_version_data is None:
+            res_version_data = RemoteConfigError(
+                code=-1, reason="解析失败", message="无法解析资源版本"
+            )
 
-        await bot.send(f"终末地版本信息(default):\n{clientVersion}\n{resVersion}\n{kickFlag}")
+        message = _format_version_info("Windows", launcher_data, res_version_data)
+        await bot.send(message)
     except Exception as e:
-        logger.error(f"获取Windows端版本失败: {e}")
+        logger.error(f"获取 Windows 端版本失败: {e}")
         await bot.send("获取版本信息失败，请稍后重试")
 
 
@@ -425,14 +566,66 @@ async def get_network_config(bot: Bot, ev: Event):
             NetworkConfig,
         )
 
-        content = "\n".join(
-            f"{key}: {value}" for key, value in data.model_dump().items() if value is not None
-        )
-        await bot.send(f"终末地网络配置:\n{content}")
+        if data is None:
+            await bot.send("获取网络配置失败，无法解析数据")
+            return
+
+        lines = [
+            "终末地网络配置",
+            SEPARATOR,
+        ]
+        for key, value in data.model_dump().items():
+            if value is not None and value != "" and value != 0:
+                lines.append(OutputFormatter.format_key_value(key, value, width=12))
+        lines.append(SEPARATOR)
+
+        await bot.send("\n".join(lines))
 
     except Exception as e:
         logger.error(f"获取终末地网络配置失败: {e}")
         await bot.send("获取网络配置失败，请稍后重试")
+
+
+@sv_server_check.on_fullmatch(("取引擎配置", "取engine_config"))
+async def get_engine_config(bot: Bot, ev: Event):
+    try:
+        result = await update_checker.check_platform_updates(Platform.DEFAULT)
+
+        data = UpdateChecker._convert_to_model(
+            result.engine_config.new,
+            EngineConfig,
+        )
+
+        if data is None:
+            await bot.send("获取引擎配置失败，无法解析数据")
+            return
+
+        lines = [
+            "终末地引擎配置",
+            SEPARATOR,
+            OutputFormatter.format_key_value("Version", data.Version),
+            OutputFormatter.format_key_value("CL", data.CL),
+            THIN_SEPARATOR,
+        ]
+
+        # Parse and display config entries
+        parsed_configs = data.get_parsed_configs()
+        for config_name, config_data in parsed_configs.items():
+            lines.append(f"  {config_name}")
+            lines.append(f"    平台: {config_data.Platform}")
+            if config_data.Processor:
+                lines.append(f"    处理器: {config_data.Processor[:30]}...")
+            if config_data.DeviceModel:
+                lines.append(f"    设备: {config_data.DeviceModel}")
+            if config_data.SOCModel:
+                lines.append(f"    SOC: {config_data.SOCModel}")
+
+        lines.append(SEPARATOR)
+        await bot.send("\n".join(lines))
+
+    except Exception as e:
+        logger.error(f"获取终末地引擎配置失败: {e}")
+        await bot.send("获取引擎配置失败，请稍后重试")
 
 
 @sv_server_check_sub.on_fullmatch("取消订阅版本更新")
@@ -475,12 +668,18 @@ async def check_subscription_status(bot: Bot, ev: Event):
         total_groups = len(data)
         current_group_subscribed = any(sub.group_id == ev.group_id for sub in data)
 
-        status_msg = "📊 终末地版本更新订阅状态\n\n"
-        status_msg += f"总订阅群数: {total_groups}\n"
-        status_msg += f"当前群状态: {'已订阅 ✅' if current_group_subscribed else '未订阅 ❌'}\n"
-        status_msg += f"检查间隔: {CHECK_INTERVAL_SECONDS}秒"
+        status_text = "已订阅" if current_group_subscribed else "未订阅"
+        interval_text = f"{CHECK_INTERVAL_SECONDS} 秒"
+        lines = [
+            "终末地版本更新订阅状态",
+            SEPARATOR,
+            OutputFormatter.format_key_value("总订阅群数", total_groups, width=12),
+            OutputFormatter.format_key_value("当前群状态", status_text, width=12),
+            OutputFormatter.format_key_value("检查间隔", interval_text, width=12),
+            SEPARATOR,
+        ]
 
-        await bot.send(status_msg)
+        await bot.send("\n".join(lines))
 
     except Exception as e:
         logger.error(f"查看订阅状态失败: {e}")
@@ -495,15 +694,20 @@ async def list_all_subscriptions(bot: Bot, ev: Event):
         if not data:
             return await bot.send("当前没有任何群订阅版本更新")
 
-        subscription_list = ["📋 终末地版本更新订阅列表\n"]
+        lines = [
+            "终末地版本更新订阅列表",
+            SEPARATOR,
+        ]
 
         for i, subscribe in enumerate(data, 1):
-            subscription_list.append(
-                f"{i}. 群号: {subscribe.group_id} "
-                f"(订阅时间: {getattr(subscribe, 'created_at', '未知')})"
-            )
+            created_at = getattr(subscribe, "created_at", "未知")
+            lines.append(f"  {i}. 群号: {subscribe.group_id}")
+            lines.append(f"     订阅时间: {created_at}")
 
-        message = "\n".join(subscription_list)
+        lines.append(SEPARATOR)
+        lines.append(f"共 {len(data)} 个群订阅")
+
+        message = "\n".join(lines)
         await bot.send(message)
 
     except Exception as e:
@@ -547,7 +751,7 @@ async def check_remote_config_updates():
         result = await update_checker.check_platform_updates(platform)
 
         if not NotificationManager.has_any_update(result):
-            logger.debug(f"{platform.value}端无更新")
+            logger.debug(f"{platform.value} 端无更新")
             continue
 
         results[platform] = result

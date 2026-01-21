@@ -9,39 +9,118 @@ class Platform(StrEnum):
     DEFAULT = "default"
     WINDOWS = "Windows"
     ANDROID = "Android"
-    PLAYSTATION = "PlayStation"
+
+
+class U8Config(BaseModel):
+    envName: str
+    launcherUrl: str
+    appCode: str
+    appType: str
+    appId: str
+    u8Root: str
+    ageTips: str
+    randStr: str
+
+
+# ============= Engine Config Models =============
+class EngineConfigParam(BaseModel):
+    """Parameters for a specific engine config fix"""
+
+    Platform: str = ""
+    Processor: str | None = None
+    DeviceModel: str | None = None
+    SOCModel: str | None = None
+    OSVersionMin: int | None = None
+    OSVersionMax: int | None = None
+    Params: dict[str, str] = Field(default_factory=dict)
+
+
+class EngineConfig(BaseModel):
+    CL: int = 0
+    Configs: str = ""  # JSON string containing config details
+    Version: int = 0
+
+    def get_parsed_configs(self) -> dict[str, EngineConfigParam]:
+        """Parse the Configs JSON string into structured data"""
+        import json
+
+        try:
+            configs_dict = json.loads(self.Configs)
+            return {
+                key: EngineConfigParam.model_validate(value)
+                for key, value in configs_dict.items()
+            }
+        except (json.JSONDecodeError, ValueError):
+            return {}
 
 
 class NetworkConfig(BaseModel):
-    asset: str = ""
     hgage: str = ""
-    sdkenv: str = ""
+    hggov: str = ""
     u8root: str = ""
-    appcode: int = 0
-    channel: str = ""
-    netlogid: str = ""
     gameclose: bool = False
     netlogurl: str = ""
-    accounturl: str = ""
     launcherurl: str = ""
 
 
+class ResVersionItem(BaseModel):
+    url: str
+    md5: str
+    package_size: str
+
+
+class ResourcePkg(BaseModel):
+    packs: list[ResVersionItem]
+    total_size: str
+    file_path: str
+    url: str
+    md5: str
+    package_size: str
+    file_id: str
+    sub_channel: str
+    game_files_md5: str
+
+
+class ResourceItem(BaseModel):
+    """Resource item in the resources list"""
+
+    name: str  # "main" or "initial"
+    version: str  # e.g., "5310633-12"
+    path: str  # resource download path
+
+
+class ResVersionConfigs(BaseModel):
+    """Parsed configs from ResVersion.configs JSON string"""
+
+    kick_flag: bool = False
+
+
 class ResVersion(BaseModel):
-    version: str = ""
-    kickFlag: bool = False
+    resources: list[ResourceItem] = Field(default_factory=list)
+    configs: str = ""  # JSON string containing kick_flag
+    res_version: str = ""  # e.g., "initial_5310633-12_main_5310633-12"
+    patch_index_path: str = ""
+    domain: str = ""
 
+    def get_parsed_configs(self) -> ResVersionConfigs:
+        """Parse the configs JSON string into structured data"""
+        import json
 
-class ServerConfig(BaseModel):
-    addr: str = ""
-    port: int = 0
+        try:
+            data = json.loads(self.configs)
+            return ResVersionConfigs.model_validate(data)
+        except (json.JSONDecodeError, ValueError):
+            return ResVersionConfigs()
 
 
 class LauncherVersion(BaseModel):
     action: int = 0
     version: str = ""
     request_version: str = ""
-    pkg: dict[str, Any] | None = None
+    pkg: ResourcePkg | None = None
     patch: dict[str, Any] | None = None
+    state: int = 0
+    launcher_action: int = 0
 
 
 class ConfigUpdate(BaseModel):
@@ -54,24 +133,15 @@ class UpdateCheckResult(BaseModel):
     network_config: ConfigUpdate
     game_config: ConfigUpdate
     res_version: ConfigUpdate
-    server_config: ConfigUpdate
+    engine_config: ConfigUpdate
     launcher_version: ConfigUpdate
     platform: Platform
 
 
 class RemoteConfigError(BaseModel):
-    code: int
-    reason: str
-    message: str
-    metadata: dict[str, Any]
-
-
-type RemoteDataItem = BaseModel | RemoteConfigError | dict[str, Any]
-type NetworkConfigWithError = NetworkConfig | RemoteConfigError
-type ResVersionWithError = ResVersion | RemoteConfigError
-type ServerConfigWithError = ServerConfig | RemoteConfigError
-type GameConfigWithError = dict[str, Any] | RemoteConfigError
-type LauncherVersionWithError = LauncherVersion | RemoteConfigError
+    code: int = 0
+    reason: str = ""
+    message: str = ""
 
 
 class RemoteConfigData[T](BaseModel):
@@ -86,11 +156,11 @@ class RemoteConfigDataWithUUID[T](BaseModel):
 
 
 class PlatformLocalConfig(BaseModel):
-    network_config: RemoteConfigDataWithUUID[NetworkConfig | RemoteConfigError]
-    res_version: RemoteConfigDataWithUUID[ResVersion | RemoteConfigError]
-    server_config: RemoteConfigDataWithUUID[ServerConfig | RemoteConfigError]
-    game_config: RemoteConfigDataWithUUID[dict[str, Any] | RemoteConfigError]
-    launcher_version: RemoteConfigDataWithUUID[LauncherVersion | RemoteConfigError]
+    network_config: RemoteConfigDataWithUUID[NetworkConfig]
+    res_version: RemoteConfigDataWithUUID[ResVersion]
+    engine_config: RemoteConfigDataWithUUID[EngineConfig]
+    game_config: RemoteConfigDataWithUUID[dict[str, Any]]
+    launcher_version: RemoteConfigDataWithUUID[LauncherVersion]
 
 
 class RemoteConfigLocalStorage(BaseModel):
@@ -100,8 +170,8 @@ class RemoteConfigLocalStorage(BaseModel):
 
 
 class RemoteConfigRemoteData(BaseModel):
-    network_config: NetworkConfig | RemoteConfigError
-    res_version: ResVersion | RemoteConfigError
-    server_config: ServerConfig | RemoteConfigError
-    game_config: dict[str, Any] | RemoteConfigError
-    launcher_version: LauncherVersion | RemoteConfigError
+    network_config: NetworkConfig
+    res_version: ResVersion
+    engine_config: EngineConfig
+    game_config: dict[str, Any]
+    launcher_version: LauncherVersion
