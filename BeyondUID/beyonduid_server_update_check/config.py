@@ -57,8 +57,4 @@ REMOTE_CONFIG_URLS = {
     ConfigType.RES_VERSION: "https://launcher.hypergryph.com/api/game/get_latest_resources?appcode=6LL0KJuqHBVz33WK&platform={device}&game_version=1.0&version={version}&rand_str={rand_str}",
 }
 
-APPCODE = "6LL0KJuqHBVz33WK"
-
-DEFAULT_VERSION = "1.0.13"
-
 ENCRYPTED_CONFIG_TYPES = {ConfigType.NETWORK_CONFIG, ConfigType.GAME_CONFIG}

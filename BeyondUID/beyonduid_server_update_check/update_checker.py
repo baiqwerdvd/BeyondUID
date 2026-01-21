@@ -10,7 +10,6 @@ from gsuid_core.logger import aiofiles, logger
 from pydantic import BaseModel, ValidationError
 
 from .config import (
-    DEFAULT_VERSION,
     ENCRYPTED_CONFIG_TYPES,
     REMOTE_CONFIG_URLS,
     ConfigType,
@@ -38,8 +37,10 @@ class UpdateChecker:
     def __init__(self):
         self.session: aiohttp.ClientSession | None = None
         self.config_file_path = get_res_path("BeyondUID") / "remote_config_storage_v2.json"
-        self._cached_version: str = DEFAULT_VERSION
-        self._cached_rand_str: str = ""
+        self._cached_version: str
+        self._cached_rand_str: str
+
+        self.initialized = False
 
     @asynccontextmanager
     async def get_session(self):
@@ -48,6 +49,30 @@ class UpdateChecker:
             self.session = aiohttp.ClientSession(timeout=timeout)
 
         yield self.session
+
+    async def initialize(self) -> None:
+        try:
+            url = self._build_url(
+                REMOTE_CONFIG_URLS[ConfigType.LAUNCHER_VERSION],
+                Platform.WINDOWS,
+            )
+            launcher_data = await self._fetch_single_config(url, ConfigType.LAUNCHER_VERSION)
+
+            if isinstance(launcher_data, LauncherVersion):
+                self._cached_version = launcher_data.version
+                if launcher_data.pkg and launcher_data.pkg.file_path:
+                    u8_config = await self._fetch_and_decrypt_u8_config(
+                        launcher_data.pkg.file_path
+                    )
+                    if u8_config and u8_config.randStr:
+                        self._cached_rand_str = u8_config.randStr
+
+                logger.info(
+                    f"UpdateChecker initialized: version={self._cached_version}, "
+                    f"rand_str={self._cached_rand_str[:8] if self._cached_rand_str else ''}..."
+                )
+        except Exception as e:
+            logger.warning(f"Failed to initialize UpdateChecker: {e}")
 
     @staticmethod
     def _convert_to_model[T: BaseModel](
@@ -372,6 +397,10 @@ class UpdateChecker:
         )
 
     async def check_platform_updates(self, platform: Platform) -> UpdateCheckResult:
+        if not self.initialized:
+            await self.initialize()
+            self.initialized = True
+
         logger.debug(f"检查 {platform.value} 平台更新")
 
         result, is_first_init = await self.check_single_config(platform)
