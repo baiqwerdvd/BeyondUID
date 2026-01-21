@@ -52,9 +52,8 @@ class UpdateChecker:
 
     async def initialize(self) -> None:
         try:
-            url = self._build_url(
-                REMOTE_CONFIG_URLS[ConfigType.LAUNCHER_VERSION],
-                Platform.WINDOWS,
+            url = REMOTE_CONFIG_URLS[ConfigType.LAUNCHER_VERSION].format(
+                device=Platform.WINDOWS.value,
             )
             launcher_data = await self._fetch_single_config(url, ConfigType.LAUNCHER_VERSION)
 
