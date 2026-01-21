@@ -478,16 +478,12 @@ def _format_version_info(
 
     # Resource version
     if isinstance(res_data, ResVersion):
-        lines.append(
-            OutputFormatter.format_key_value("资源版本", res_data.res_version or "未知")
-        )
+        lines.append(OutputFormatter.format_key_value("资源版本", res_data.res_version or "未知"))
         kick_flag_str = OutputFormatter.format_bool(res_data.get_parsed_configs().kick_flag)
         lines.append(OutputFormatter.format_key_value("踢出标记", kick_flag_str))
         # Display individual resource versions
         for resource in res_data.resources:
-            lines.append(
-                OutputFormatter.format_key_value(f"  {resource.name}", resource.version)
-            )
+            lines.append(OutputFormatter.format_key_value(f"  {resource.name}", resource.version))
     else:
         err_msg = f"错误: {res_data.reason}"
         lines.append(OutputFormatter.format_key_value("资源版本", err_msg))
@@ -526,10 +522,10 @@ async def get_latest_version_android(bot: Bot, ev: Event):
         await bot.send("获取版本信息失败，请稍后重试")
 
 
-@sv_server_check.on_command("取最新版本")
+@sv_server_check.on_command(("取最新版本", "取Windows端最新版本", "取PC端最新版本"))
 async def get_latest_version_windows(bot: Bot, ev: Event):
     try:
-        result = await update_checker.check_platform_updates(Platform.DEFAULT)
+        result = await update_checker.check_platform_updates(Platform.WINDOWS)
 
         launcher_data = UpdateChecker._convert_to_model(
             result.launcher_version.new,
