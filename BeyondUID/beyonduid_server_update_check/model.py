@@ -25,13 +25,13 @@ class U8Config(BaseModel):
 
 
 class EngineConfigParam(BaseModel):
-    Platform: str = ""
-    Processor: str | None = None
-    DeviceModel: str | None = None
-    SOCModel: str | None = None
-    OSVersionMin: int | None = None
-    OSVersionMax: int | None = None
-    Params: dict[str, str] = Field(default_factory=dict)
+    Platform: str
+    Processor: str | None
+    DeviceModel: str | None
+    SOCModel: str | None
+    OSVersionMin: int | None
+    OSVersionMax: int | None
+    Params: dict[str, str]
 
 
 class EngineConfig(BaseModel):
@@ -40,7 +40,6 @@ class EngineConfig(BaseModel):
     Version: int = 0
 
     def get_parsed_configs(self) -> dict[str, EngineConfigParam]:
-        """Parse the Configs JSON string into structured data"""
         import json
 
         try:

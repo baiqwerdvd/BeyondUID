@@ -9,20 +9,24 @@ from gsuid_core.utils.image.image_tools import get_div
 from gsuid_core.utils.image.utils import download_pic_to_image
 from PIL import Image, ImageDraw
 
-from .model import BulletinData
+from .model import BulletinData, DisplayType
 
 
 async def get_ann_img(data: BulletinData) -> str | bytes:
     match data.displayType:
-        case "rich_text":
-            soup = BeautifulSoup(data.data.html, "lxml")
-            img = await soup_to_img(data.header, soup, "")
-            return img
+        case DisplayType.RICH_TEXT:
+            if data.data.html:
+                soup = BeautifulSoup(data.data.html, "lxml")
+                img = await soup_to_img(data.header, soup, "")
+                return img
+            return "富文本公告内容为空"
+        case DisplayType.PICTURE:
+            if data.data.url:
+                img = await download_pic_to_image(data.data.url)
+                return await convert_img(img)
+            return "图片公告URL为空"
         case _:
-            img = await download_pic_to_image("")
-            return await convert_img(img)
-        # case _:
-        #     return "暂不支持的公告类型"
+            return "暂不支持的公告类型"
 
 
 async def process_tag(

@@ -356,7 +356,7 @@ class NotificationManager:
     async def send_update_notifications(results: dict[Platform, UpdateCheckResult]):
         datas = await gs_subscribe.get_subscribe(TASK_NAME_SERVER_CHECK)
         if not datas:
-            logger.info("[终末地版本更新] 暂无群订阅")
+            logger.debug("[终末地版本更新] 暂无群订阅")
             return
 
         grouped_messages: dict[str, list[Platform]] = {}

@@ -1,6 +1,18 @@
-from typing import Any
+from enum import StrEnum
 
 from msgspec import Struct, field
+
+
+class Platform(StrEnum):
+    WINDOWS = "Windows"
+    ANDROID = "Android"
+    IOS = "iOS"
+    PLAYSTATION = "PlayStation"
+
+
+class DisplayType(StrEnum):
+    PICTURE = "picture"
+    RICH_TEXT = "rich_text"
 
 
 class BulletinTargetDataItem(Struct):
@@ -9,87 +21,81 @@ class BulletinTargetDataItem(Struct):
     tab: str
     orderType: int
     orderWeight: int
-    displayType: str
+    displayType: DisplayType
     startAt: int
     focus: int
     title: str
 
 
-class BulletinTargetDataPopup(Struct):
-    popupList: list[Any]
-    defaultPopup: str
-
-
-# {
-#     "topicCid": "2113",
-#     "type": 1,
-#     "platform": "Windows",
-#     "server": "#DEFAULT",
-#     "channel": "#DEFAULT",
-#     "lang": "zh-cn",
-#     "key": "1:Windows:#DEFAULT:#DEFAULT:zh-cn",
-#     "version": "49b6d014b5ceccebda48f108b9597fa3",
-#     "onlineList": ["9821"],
-#     "popupList": [],
-#     "popupVersion": 0,
-#     "updatedAt": 1736983800,
-#     "list": [
-#         {
-#             "cid": "9821",
-#             "type": 1,
-#             "tab": "news",
-#             "orderType": 1,
-#             "orderWeight": 1,
-#             "displayType": "rich_text",
-#             "startAt": 1736983800,
-#             "focus": 0,
-#             "title": "测试须知",
-#         }
-#     ],
-# }
+class BulletinOnlineListItem(Struct):
+    cid: str
+    version: int
+    needRedDot: bool
+    needPopup: bool
 
 
 class BulletinTargetData(Struct):
-    topicCid: str = field(name="topicCid", default="")
-    type: int = field(name="type", default=1)
-    platform: str = field(name="platform", default="Windows")
-    server: str = field(name="server", default="#DEFAULT")
-    channel: str = field(name="channel", default="#DEFAULT")
-    lang: str = field(name="lang", default="zh-cn")
-    key: str = field(name="key", default="")
-    version: str = field(name="version", default="")
-    onlineList: list[str] = field(name="onlineList", default_factory=list)
-    popupList: list[Any] = field(name="popupList", default_factory=list)
-    popupVersion: int = field(name="popupVersion", default=0)
-    updatedAt: int = field(name="updatedAt", default=0)
+    topicCid: str = ""
+    type: int = 1
+    platform: str = "Windows"
+    server: str = "#DEFAULT"
+    channel: str = "1"
+    subChannel: str = "#DEFAULT"
+    lang: str = "zh-cn"
+    key: str = "1:Windows:#DEFAULT:1:#DEFAULT:zh-cn"
+    version: str = "fb3c9f2e794067115b9037624ff8940c"
+    onlineList: list[BulletinOnlineListItem] = field(name="onlineList", default_factory=list)
+    popupVersion: int = 0
+    updatedAt: int = 0
     list_: list[BulletinTargetDataItem] = field(name="list", default_factory=list)
 
 
 class BulletinTarget(Struct):
-    Windows: BulletinTargetData = field(default_factory=BulletinTargetData)
-    Android: BulletinTargetData = field(default_factory=BulletinTargetData)
+    Windows: BulletinTargetData
+    Android: BulletinTargetData
+    iOS: BulletinTargetData
+    PlayStation: BulletinTargetData
 
 
 class BulletinDataData(Struct):
-    html: str
+    linkType: int
+    url: str | None = None
+    link: str | None = None
+    html: str | None = None
 
 
 class BulletinData(Struct):
     cid: str
-    data: BulletinDataData
-    displayType: str
-    focus: int
-    header: str
-    jumpButton: str | None
+    type: int
+    tab: str
     orderType: int
     orderWeight: int
+    displayType: DisplayType
+    focus: int
     startAt: int
-    tab: str
     title: str
-    type: int
+    header: str
+    jumpButton: str | None
+    data: BulletinDataData
+    needRedDot: bool
+    needPopup: bool
+    version: int
 
 
 class BulletinAggregate(Struct):
-    data: dict[str, BulletinData] = field(default_factory=dict)
-    update: dict[str, BulletinData] = field(default_factory=dict)
-    target: BulletinTarget = field(default_factory=BulletinTarget)
+    data: dict[str, BulletinData]
+    update: dict[str, BulletinData]
+    target: BulletinTarget
+
+    @staticmethod
+    def default() -> "BulletinAggregate":
+        return BulletinAggregate(
+            data={},
+            update={},
+            target=BulletinTarget(
+                Windows=BulletinTargetData(),
+                Android=BulletinTargetData(),
+                iOS=BulletinTargetData(),
+                PlayStation=BulletinTargetData(),
+            ),
+        )

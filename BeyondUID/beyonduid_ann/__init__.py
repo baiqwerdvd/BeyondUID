@@ -75,11 +75,11 @@ async def force_ann_(bot: Bot, ev: Event):
 async def get_ann_list_(bot: Bot, ev: Event):
     async with aiohttp.ClientSession() as session:
         async with session.get(
-            f"{BASE_URL}/bulletin/aggregate?lang={LANGUAGE}&platform=Windows&server=China&type=1&code={GAME_CODE}&hideDetail=1"
+            f"{BASE_URL}/bulletin/v2/aggregate?lang={LANGUAGE}&channel=1&subChannel=1&platform=Windows&type=1&code={GAME_CODE}&hideDetail=1"
         ) as response:
             data = await response.json()
 
-    data = convert(data.get("data", {}), BulletinTargetData)
+    data = convert(data["data"], BulletinTargetData)
     msg = ""
     for i in data.list_:
         title = i.title.replace("\\n", "")
@@ -92,11 +92,11 @@ async def get_ann_list_(bot: Bot, ev: Event):
 async def get_ann_list_and(bot: Bot, ev: Event):
     async with aiohttp.ClientSession() as session:
         async with session.get(
-            f"{BASE_URL}/bulletin/aggregate?lang={LANGUAGE}&platform=Android&server=China&type=1&code={GAME_CODE}&hideDetail=1"
+            f"{BASE_URL}/bulletin/v2/aggregate?lang={LANGUAGE}&channel=1&subChannel=1&platform=Android&type=1&code={GAME_CODE}&hideDetail=1"
         ) as response:
             data = await response.json()
 
-    data = convert(data.get("data", {}), BulletinTargetData)
+    data = convert(data["data"], BulletinTargetData)
     msg = ""
     for i in data.list_:
         title = i.title.replace("\\n", "")
