@@ -571,8 +571,7 @@ async def get_network_config(bot: Bot, ev: Event):
             SEPARATOR,
         ]
         for key, value in data.model_dump().items():
-            if value is not None and value != "" and value != 0:
-                lines.append(OutputFormatter.format_key_value(key, value, width=12))
+            lines.append(OutputFormatter.format_key_value(key, value, width=12))
         lines.append(SEPARATOR)
 
         await bot.send("\n".join(lines))
