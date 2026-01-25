@@ -13,6 +13,11 @@ class Platform(StrEnum):
     PLAYSTATION = "PlayStation"
 
 
+class FetchParams(BaseModel):
+    version: str
+    rand_str: str
+
+
 class U8Config(BaseModel):
     envName: str
     launcherUrl: str

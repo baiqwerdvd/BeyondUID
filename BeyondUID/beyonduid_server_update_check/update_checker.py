@@ -17,6 +17,7 @@ from .config import (
 from .model import (
     ConfigUpdate,
     EngineConfig,
+    FetchParams,
     LauncherVersion,
     NetworkConfig,
     Platform,
@@ -37,10 +38,7 @@ class UpdateChecker:
     def __init__(self):
         self.session: aiohttp.ClientSession | None = None
         self.config_file_path = get_res_path("BeyondUID") / "remote_config_storage_v2.json"
-        self._cached_version: str
-        self._cached_rand_str: str
-
-        self.initialized = False
+        self._shared_rand_str: str | None = None  # 从 Windows 平台获取，共享给所有平台
 
     @asynccontextmanager
     async def get_session(self):
@@ -49,29 +47,6 @@ class UpdateChecker:
             self.session = aiohttp.ClientSession(timeout=timeout)
 
         yield self.session
-
-    async def initialize(self) -> None:
-        try:
-            url = REMOTE_CONFIG_URLS[ConfigType.LAUNCHER_VERSION].format(
-                device=Platform.WINDOWS.value,
-            )
-            launcher_data = await self._fetch_single_config(url, ConfigType.LAUNCHER_VERSION)
-
-            if isinstance(launcher_data, LauncherVersion):
-                self._cached_version = launcher_data.version
-                if launcher_data.pkg and launcher_data.pkg.file_path:
-                    u8_config = await self._fetch_and_decrypt_u8_config(
-                        launcher_data.pkg.file_path
-                    )
-                    if u8_config and u8_config.randStr:
-                        self._cached_rand_str = u8_config.randStr
-
-                logger.info(
-                    f"UpdateChecker initialized: version={self._cached_version}, "
-                    f"rand_str={self._cached_rand_str[:8] if self._cached_rand_str else ''}..."
-                )
-        except Exception as e:
-            logger.warning(f"Failed to initialize UpdateChecker: {e}")
 
     @staticmethod
     def _convert_to_model[T: BaseModel](
@@ -84,12 +59,19 @@ class UpdateChecker:
             logger.error(f"Failed to validate data with model {model.__name__}: {e}")
             return None
 
-    def _build_url(self, url_template: str, platform: Platform) -> str:
-        return url_template.format(
-            device=platform.value,
-            version=self._cached_version,
-            rand_str=self._cached_rand_str,
-        )
+    @staticmethod
+    def _build_url(
+        url_template: str,
+        platform: Platform,
+        fetch_params: FetchParams | None = None,
+    ) -> str:
+        if fetch_params:
+            return url_template.format(
+                device=platform.value,
+                version=fetch_params.version,
+                rand_str=fetch_params.rand_str,
+            )
+        return url_template.format(device=platform.value)
 
     async def _fetch_and_decrypt_u8_config(self, file_path_url: str) -> U8Config | None:
         try:
@@ -116,6 +98,61 @@ class UpdateChecker:
         except Exception as e:
             logger.warning(f"Failed to decrypt U8 config: {e}")
             return None
+
+    async def _ensure_shared_rand_str(self) -> str | None:
+        if self._shared_rand_str:
+            return self._shared_rand_str
+
+        win_url = self._build_url(
+            REMOTE_CONFIG_URLS[ConfigType.LAUNCHER_VERSION], Platform.WINDOWS
+        )
+        win_launcher = await self._fetch_single_config(win_url, ConfigType.LAUNCHER_VERSION)
+
+        if isinstance(win_launcher, LauncherVersion):
+            if win_launcher.pkg and win_launcher.pkg.file_path:
+                u8_config = await self._fetch_and_decrypt_u8_config(win_launcher.pkg.file_path)
+                if u8_config and u8_config.randStr:
+                    self._shared_rand_str = u8_config.randStr
+                    rand_preview = self._shared_rand_str[:8]
+                    logger.debug(f"Cached shared randStr from Windows: {rand_preview}")
+                    return self._shared_rand_str
+
+        logger.warning("Failed to get shared randStr from Windows platform")
+        return None
+
+    async def _extract_fetch_params(
+        self, launcher_version: LauncherVersion, platform: Platform
+    ) -> FetchParams | None:
+        version = launcher_version.version
+        rand_str = ""
+
+        if platform == Platform.WINDOWS:
+            if launcher_version.pkg and launcher_version.pkg.file_path:
+                file_path = launcher_version.pkg.file_path
+                u8_config = await self._fetch_and_decrypt_u8_config(file_path)
+                if u8_config and u8_config.randStr:
+                    rand_str = u8_config.randStr
+                    self._shared_rand_str = rand_str  # 同时缓存为共享值
+                    logger.debug(f"Extracted randStr from U8 config: {rand_str[:8]}...")
+        else:
+            shared = await self._ensure_shared_rand_str()
+            if shared:
+                rand_str = shared
+                logger.debug(f"Using shared randStr for {platform.value}: {rand_str[:8]}...")
+
+        if version and rand_str:
+            return FetchParams(version=version, rand_str=rand_str)
+
+        # default 平台不支持 version 获取，使用 debug 级别日志
+        if platform == Platform.DEFAULT:
+            logger.debug(f"Platform {platform.value} does not support version fetch")
+        else:
+            rand_str_preview = rand_str[:8] if rand_str else ""
+            logger.warning(
+                f"Failed to extract FetchParams for {platform.value}: "
+                f"version={version}, rand_str={rand_str_preview}"
+            )
+        return None
 
     async def _fetch_single_config(self, url: str, config_type: ConfigType) -> Any | None:
         try:
@@ -170,12 +207,34 @@ class UpdateChecker:
             logger.error(f"获取 {config_type.value} 时发生意外错误: {e}")
             return None
 
-    async def fetch_config(self, platform: Platform) -> RemoteConfigRemoteData | None:
+    async def fetch_all_configs(self, platform: Platform) -> RemoteConfigRemoteData | None:
         results: dict[str, Any] = {}
 
-        for config_type, url_template in REMOTE_CONFIG_URLS.items():
-            url = self._build_url(url_template, platform)
+        launcher_url = self._build_url(REMOTE_CONFIG_URLS[ConfigType.LAUNCHER_VERSION], platform)
+        launcher_data = await self._fetch_single_config(launcher_url, ConfigType.LAUNCHER_VERSION)
+        if launcher_data is None:
+            logger.error(
+                f"Failed to fetch LAUNCHER_VERSION for {platform.value}. Aborting full fetch."
+            )
+            return None
+        results["launcher_version"] = launcher_data
 
+        fetch_params: FetchParams | None = None
+        if isinstance(launcher_data, LauncherVersion):
+            fetch_params = await self._extract_fetch_params(launcher_data, platform)
+            if fetch_params:
+                logger.debug(
+                    f"Extracted FetchParams for {platform.value}: "
+                    f"version={fetch_params.version}, rand_str={fetch_params.rand_str[:8]}..."
+                )
+
+        independent_configs = [
+            ConfigType.ENGINE_CONFIG,
+            ConfigType.NETWORK_CONFIG,
+            ConfigType.GAME_CONFIG,
+        ]
+        for config_type in independent_configs:
+            url = self._build_url(REMOTE_CONFIG_URLS[config_type], platform)
             config_data = await self._fetch_single_config(url, config_type)
             if config_data is None:
                 logger.error(
@@ -185,15 +244,28 @@ class UpdateChecker:
                 return None
             results[config_type.name.lower()] = config_data
 
-        launcher_data = results["launcher_version"]
-        if isinstance(launcher_data, LauncherVersion) and platform == Platform.WINDOWS:
-            self._cached_version = launcher_data.version
-            if launcher_data.pkg and launcher_data.pkg.file_path:
-                file_path_url = launcher_data.pkg.file_path
-                u8_config = await self._fetch_and_decrypt_u8_config(file_path_url)
-                if u8_config and u8_config.randStr:
-                    self._cached_rand_str = u8_config.randStr
-                    logger.debug(f"Successfully extracted randStr: {u8_config.randStr}")
+        if fetch_params:
+            res_version_url = self._build_url(
+                REMOTE_CONFIG_URLS[ConfigType.RES_VERSION], platform, fetch_params
+            )
+            res_version_data = await self._fetch_single_config(
+                res_version_url, ConfigType.RES_VERSION
+            )
+            if res_version_data is None:
+                logger.error(
+                    f"Failed to fetch RES_VERSION for {platform.value}. Aborting full fetch."
+                )
+                return None
+            results["res_version"] = res_version_data
+        else:
+            if platform == Platform.DEFAULT:
+                logger.debug(f"Platform {platform.value} uses default RES_VERSION")
+            else:
+                logger.warning(
+                    f"No FetchParams available for {platform.value}, "
+                    "RES_VERSION will use default empty value."
+                )
+            results["res_version"] = ResVersion()
 
         return RemoteConfigRemoteData(
             network_config=results.get("network_config", NetworkConfig()),
@@ -355,13 +427,7 @@ class UpdateChecker:
             return result
 
     async def check_single_config(self, platform: Platform) -> tuple[ConfigUpdate, bool]:
-        """
-        检查单个平台的配置更新。
-
-        Returns:
-            tuple[ConfigUpdate, bool]: (配置更新结果, 是否为首次初始化)
-        """
-        new_remote_data = await self.fetch_config(platform)
+        new_remote_data = await self.fetch_all_configs(platform)
         if new_remote_data is None:
             logger.error(f"无法获取配置 {platform.value}")
             return ConfigUpdate(old={}, new={}, updated=False), False
@@ -395,56 +461,40 @@ class UpdateChecker:
             is_first_init,
         )
 
-    async def check_platform_updates(self, platform: Platform) -> UpdateCheckResult:
-        if not self.initialized:
-            await self.initialize()
-            self.initialized = True
+    @staticmethod
+    def _create_config_update(
+        result: ConfigUpdate,
+        config_key: str,
+    ) -> ConfigUpdate:
+        old_data = result.old.get(config_key, {})
+        new_data = result.new.get(config_key, {})
+        return ConfigUpdate(
+            old=old_data,
+            new=new_data,
+            updated=normalize_data_for_comparison(old_data)
+            != normalize_data_for_comparison(new_data),
+        )
 
+    async def check_platform_updates(self, platform: Platform) -> UpdateCheckResult:
         logger.debug(f"检查 {platform.value} 平台更新")
 
         result, is_first_init = await self.check_single_config(platform)
 
-        network_config_update = ConfigUpdate(
-            old=result.old.get("network_config", {}),
-            new=result.new.get("network_config", {}),
-            updated=normalize_data_for_comparison(result.old.get("network_config", {}))
-            != normalize_data_for_comparison(result.new.get("network_config", {})),
-        )
-
-        game_config_update = ConfigUpdate(
-            old=result.old.get("game_config", {}),
-            new=result.new.get("game_config", {}),
-            updated=normalize_data_for_comparison(result.old.get("game_config", {}))
-            != normalize_data_for_comparison(result.new.get("game_config", {})),
-        )
-
-        res_version_update = ConfigUpdate(
-            old=result.old.get("res_version", {}),
-            new=result.new.get("res_version", {}),
-            updated=normalize_data_for_comparison(result.old.get("res_version", {}))
-            != normalize_data_for_comparison(result.new.get("res_version", {})),
-        )
-
-        engine_config_update = ConfigUpdate(
-            old=result.old.get("engine_config", {}),
-            new=result.new.get("engine_config", {}),
-            updated=normalize_data_for_comparison(result.old.get("engine_config", {}))
-            != normalize_data_for_comparison(result.new.get("engine_config", {})),
-        )
-
-        launcher_version_update = ConfigUpdate(
-            old=result.old.get("launcher_version", {}),
-            new=result.new.get("launcher_version", {}),
-            updated=normalize_data_for_comparison(result.old.get("launcher_version", {}))
-            != normalize_data_for_comparison(result.new.get("launcher_version", {})),
-        )
+        config_keys = [
+            "network_config",
+            "game_config",
+            "res_version",
+            "engine_config",
+            "launcher_version",
+        ]
+        config_updates = {key: self._create_config_update(result, key) for key in config_keys}
 
         return UpdateCheckResult(
-            network_config=network_config_update,
-            game_config=game_config_update,
-            res_version=res_version_update,
-            engine_config=engine_config_update,
-            launcher_version=launcher_version_update,
+            network_config=config_updates["network_config"],
+            game_config=config_updates["game_config"],
+            res_version=config_updates["res_version"],
+            engine_config=config_updates["engine_config"],
+            launcher_version=config_updates["launcher_version"],
             platform=platform,
             is_first_init=is_first_init,
         )
