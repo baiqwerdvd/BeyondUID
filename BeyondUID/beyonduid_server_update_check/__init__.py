@@ -150,11 +150,11 @@ class NotificationManager:
 
     @staticmethod
     def is_error(obj: dict[str, Any]) -> bool:
-        try:
-            RemoteConfigError.model_validate(obj)
-            return True
-        except Exception:
+        if not all(key in obj for key in ("code", "reason", "message")):
             return False
+        if obj.get("code") == 0:
+            return False
+        return True
 
     @staticmethod
     def safe_convert_to_model[T: BaseModel](data: dict[str, Any], model: type[T]) -> T:
