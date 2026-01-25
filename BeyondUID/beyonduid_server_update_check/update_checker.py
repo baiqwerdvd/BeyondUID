@@ -346,10 +346,14 @@ class UpdateChecker:
                 storage_type = type(storage_data_with_uuid)
                 model_fields = storage_type.model_fields["data"]
                 value_type = get_args(model_fields.annotation)[1]
+
+                new_data = dict(storage_data_with_uuid.data)
+                new_data[current_uuid] = value_type(
+                    data=remote_data_item, fetch_time=current_time
+                )
+
                 storage_data_with_uuid = storage_type(
-                    data={
-                        current_uuid: value_type(data=remote_data_item, fetch_time=current_time)
-                    },
+                    data=new_data,
                     last_updated=current_time,
                     last_uuid=current_uuid,
                 )
