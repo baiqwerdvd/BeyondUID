@@ -114,7 +114,7 @@ class UpdateChecker:
                 if u8_config and u8_config.randStr:
                     self._shared_rand_str = u8_config.randStr
                     rand_preview = self._shared_rand_str[:8]
-                    logger.debug(f"Cached shared randStr from Windows: {rand_preview}")
+                    logger.trace(f"Cached shared randStr from Windows: {rand_preview}")
                     return self._shared_rand_str
 
         logger.warning("Failed to get shared randStr from Windows platform")
@@ -133,19 +133,19 @@ class UpdateChecker:
                 if u8_config and u8_config.randStr:
                     rand_str = u8_config.randStr
                     self._shared_rand_str = rand_str  # 同时缓存为共享值
-                    logger.debug(f"Extracted randStr from U8 config: {rand_str[:8]}...")
+                    logger.trace(f"Extracted randStr from U8 config: {rand_str[:8]}...")
         else:
             shared = await self._ensure_shared_rand_str()
             if shared:
                 rand_str = shared
-                logger.debug(f"Using shared randStr for {platform.value}: {rand_str[:8]}...")
+                logger.trace(f"Using shared randStr for {platform.value}: {rand_str[:8]}...")
 
         if version and rand_str:
             return FetchParams(version=version, rand_str=rand_str)
 
         # default 平台不支持 version 获取，使用 debug 级别日志
         if platform == Platform.DEFAULT:
-            logger.debug(f"Platform {platform.value} does not support version fetch")
+            logger.trace(f"Platform {platform.value} does not support version fetch")
         else:
             rand_str_preview = rand_str[:8] if rand_str else ""
             logger.warning(
@@ -163,7 +163,7 @@ class UpdateChecker:
             if config_type in ENCRYPTED_CONFIG_TYPES:
                 try:
                     data = json.loads(text)
-                    logger.debug(f"{config_type.value} is plain JSON, skipping decryption")
+                    logger.trace(f"{config_type.value} is plain JSON, skipping decryption")
                 except json.JSONDecodeError:
                     try:
                         decrypted_text = RemoteConfigUtils.get_text(text)
@@ -223,7 +223,7 @@ class UpdateChecker:
         if isinstance(launcher_data, LauncherVersion):
             fetch_params = await self._extract_fetch_params(launcher_data, platform)
             if fetch_params:
-                logger.debug(
+                logger.trace(
                     f"Extracted FetchParams for {platform.value}: "
                     f"version={fetch_params.version}, rand_str={fetch_params.rand_str[:8]}..."
                 )
@@ -259,7 +259,7 @@ class UpdateChecker:
             results["res_version"] = res_version_data
         else:
             if platform == Platform.DEFAULT:
-                logger.debug(f"Platform {platform.value} uses default RES_VERSION")
+                logger.trace(f"Platform {platform.value} uses default RES_VERSION")
             else:
                 logger.warning(
                     f"No FetchParams available for {platform.value}, "
@@ -340,7 +340,7 @@ class UpdateChecker:
                 current_data_to_compare
             ):
                 storage_data_with_uuid.last_updated = current_time
-                logger.debug(f"配置 for {platform.value} - {config_name} 未改变。")
+                logger.trace(f"配置 for {platform.value} - {config_name} 未改变。")
             else:
                 current_uuid = uuid4()
                 storage_type = type(storage_data_with_uuid)
@@ -480,7 +480,7 @@ class UpdateChecker:
         )
 
     async def check_platform_updates(self, platform: Platform) -> UpdateCheckResult:
-        logger.debug(f"检查 {platform.value} 平台更新")
+        logger.trace(f"检查 {platform.value} 平台更新")
 
         result, is_first_init = await self.check_single_config(platform)
 
