@@ -23,7 +23,7 @@ from BeyondUID.utils.resource.RESOURCE_PATH import (
 CARD_W = 175
 BAR_H = 26
 CARD_H = 260
-GAP = 10
+GAP = 5
 ROW_GAP = 10
 
 TEXT_PATH = Path(__file__).parent / "texture2d"
@@ -88,7 +88,10 @@ def get_pity_per_pool(
 
     result = {}
     for pool_id, pool_items in by_pool.items():
-        sorted_items = sorted(pool_items, key=lambda x: int(x.gachaTs), reverse=True)
+        # 按 gachaTs 降序，同 gachaTs 时按 seqId 降序，确保同一批十连内顺序正确
+        sorted_items = sorted(
+            pool_items, key=lambda x: (int(x.gachaTs), int(x.seqId)), reverse=True
+        )
         pity = 0
         for item in sorted_items:
             if item.rarity == 6:
@@ -103,9 +106,10 @@ def get_pull_number_in_pool(
     items: list[CharRecordItem] | list[WeaponRecordItem],
     item: CharRecordItem | WeaponRecordItem,
 ) -> int:
-    """池内按 gachaTs 正序排序后，该条目的 1-based 抽数。"""
+    """池内按 gachaTs 正序排序后，该条目的 1-based 抽数（不含免费抽）。"""
     pool_items = [i for i in items if i.poolId == item.poolId]
-    pool_sorted = sorted(pool_items, key=lambda x: int(x.gachaTs))
+    non_free_items = [i for i in pool_items if not getattr(i, "isFree", False)]
+    pool_sorted = sorted(non_free_items, key=lambda x: (int(x.gachaTs), int(x.seqId)))
     for idx, i in enumerate(pool_sorted):
         if i.seqId == item.seqId and i.gachaTs == item.gachaTs:
             return idx + 1
@@ -141,9 +145,10 @@ async def _draw_card(
     char_id: str | None = None,
     weapon_id: str | None = None,
     is_up: bool = False,
+    is_free: bool = False,
 ) -> None:
     """在画布 img 的 xy_point 处绘制一张六星卡（角色或武器）。
-    层序：sg_bg → 头像 → 可选 UP 标 → sg6_fg → 「N抽」文字。
+    层序：sg_bg → 头像 → 可选 UP 标 → sg6_fg → 「N抽」或「欧皇」文字。
     调用时须且仅须指定 char_id 或 weapon_id 之一。"""
     if (char_id is None) == (weapon_id is None):
         raise ValueError("须指定 char_id 或 weapon_id 其一")
@@ -178,10 +183,11 @@ async def _draw_card(
         up_tag = up_tag.resize((tag_size, tag_size))
         sg_bg_img.paste(up_tag, (CARD_W - tag_size + 5, 4), up_tag)
 
-    # sg6_fg → 「N抽」文字
+    # sg6_fg → 「N抽」或「欧皇」文字
     fg_img = Image.open(TEXT_PATH / "sg6_fg.png")
     sg_bg_img.paste(fg_img, (0, 0), fg_img)
-    text_str = f"{gacha_num}抽"
+    # 免费抽出的6星显示「欧皇」
+    text_str = "欧皇" if is_free else f"{gacha_num}抽"
     font = core_font(30)
     text_draw = ImageDraw.Draw(sg_bg_img)
     text_draw.text((90, 235), text_str, font=font, fill="white", anchor="mm")
@@ -464,7 +470,10 @@ async def draw_gachalogs_img(uid: str, bot: Bot, ev: Event):
     pity_by_pool = get_pity_per_pool(char_list)
     pity_weapon = get_pity_per_pool(weapon_list)
     limited_items = [c for c in char_list if c.poolId.startswith("special_")]
-    limited_sorted = sorted(limited_items, key=lambda x: int(x.gachaTs), reverse=True)
+    # 按 gachaTs 降序，同 gachaTs 时按 seqId 降序，确保同一批十连内顺序正确
+    limited_sorted = sorted(
+        limited_items, key=lambda x: (int(x.gachaTs), int(x.seqId)), reverse=True
+    )
     pity_limited = 0
     for item in limited_sorted:
         if item.rarity == 6:
@@ -625,14 +634,19 @@ async def draw_gachalogs_img(uid: str, bot: Bot, ev: Event):
             col, row = index % 6, index // 6
             xy = (60 + col * (CARD_W + GAP), grid_y + row * (CARD_H + ROW_GAP))
             gacha_num = get_pull_number_in_pool(pull_list, item)
+            is_free = getattr(item, "isFree", False)
             if is_char_pool:
                 item_id = item.charId
                 is_up = (UP_ITEMS.get(item.poolId) == item_id) if use_is_up else False
-                await _draw_card(img, xy, gacha_num, char_id=item_id, is_up=is_up)
+                await _draw_card(
+                    img, xy, gacha_num, char_id=item_id, is_up=is_up, is_free=is_free
+                )
             else:
                 item_id = item.weaponId
                 is_up = (UP_ITEMS.get(item.poolId) == item_id) if use_is_up else False
-                await _draw_card(img, xy, gacha_num, weapon_id=item_id, is_up=is_up)
+                await _draw_card(
+                    img, xy, gacha_num, weapon_id=item_id, is_up=is_up, is_free=is_free
+                )
         current_y += h + ROW_GAP
 
     await bot.send(await convert_img(img))
