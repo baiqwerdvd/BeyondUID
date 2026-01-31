@@ -87,6 +87,8 @@ async def get_attendance_info(client: SklandClient) -> EndfieldAttendanceInfoRes
         ENDFIELD_ATTENDANCE_URL,
         headers=headers,
     )
+    if response.status_code == 403:
+        logger.warning(response.text)
     response.raise_for_status()
 
     return EndfieldAttendanceInfoResponse.model_validate_json(response.content)
@@ -107,6 +109,8 @@ async def get_attendance_record(client: SklandClient) -> EndfieldAttendanceRecor
         ENDFIELD_ATTENDANCE_RECORD_URL,
         headers=headers,
     )
+    if response.status_code == 403:
+        logger.warning(response.text)
     response.raise_for_status()
 
     return EndfieldAttendanceRecordResponse.model_validate_json(response.content)
@@ -133,6 +137,8 @@ async def do_attendance(client: SklandClient, uid: str) -> EndfieldSignResultRes
         headers=headers,
     )
     logger.debug(f"签到返回内容: {response.text}")
+    if response.status_code == 403:
+        logger.warning(response.text)
     response.raise_for_status()
 
     return EndfieldSignResultResponse.model_validate_json(response.content)
@@ -167,7 +173,11 @@ async def sign_in(uid: str, game_name: SklandGameName = SklandGameName.Endfield)
 
         if attendance_info.data and attendance_info.data.hasToday:
             # 已经签到过，获取签到记录
-            record_resp = await get_attendance_record(client)
+            try:
+                record_resp = await get_attendance_record(client)
+            except Exception as e:
+                logger.error(f"{sign_title} 获取签到记录失败: {e}")
+                return f"{sign_title} 获取签到记录失败: {e!s}"
             if record_resp.code == 0 and record_resp.data:
                 records = record_resp.data.records
                 resource_map = record_resp.data.resourceInfoMap
