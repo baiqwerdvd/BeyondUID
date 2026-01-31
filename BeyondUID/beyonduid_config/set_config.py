@@ -1,7 +1,7 @@
 from gsuid_core.logger import logger
 
 from ..utils.database.models import BeyondPush
-from .byd_config import BydConfig
+from .beyond_config import BeyondConfig
 from .config_default import CONIFG_DEFAULT
 
 PUSH_MAP = {
@@ -32,7 +32,7 @@ async def set_config_func(
         )
         if config_name in PRIV_MAP:
             # 执行设置
-            # await ArknightsUser.update_user_data(
+            # await BeyondUser.update_user_data(
             #     uid,
             #     {
             #         f"{PRIV_MAP[config_name]}_switch": option,
@@ -61,7 +61,7 @@ async def set_config_func(
         logger.info(f"config_name:{config_name},query:{query}")
         # 执行设置
         if query is not None:
-            BydConfig.set_config(name, query)
+            BeyondConfig.set_config(name, query)
             im = "成功设置{}为{}。".format(config_name, "开" if query else "关")
         else:
             im = "未传入参数query!"

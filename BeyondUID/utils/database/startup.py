@@ -6,7 +6,7 @@ exec_list = []
 
 
 @on_core_start
-async def ark_adapter():
+async def byd_adapter():
     async with async_maker() as session:
         for _t in exec_list:
             try:

@@ -490,7 +490,7 @@ def _format_version_info(
     return "\n".join(lines)
 
 
-@sv_server_check.on_command("取Android端最新版本")
+@sv_server_check.on_command(keyword="取Android端最新版本")
 async def get_latest_version_android(bot: Bot, ev: Event):
     try:
         result = await update_checker.check_platform_updates(Platform.ANDROID)

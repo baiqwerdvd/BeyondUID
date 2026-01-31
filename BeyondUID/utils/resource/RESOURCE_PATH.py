@@ -7,9 +7,14 @@ sys.path.append(str(MAIN_PATH))
 
 CU_BG_PATH = MAIN_PATH / "bg"
 CONFIG_PATH = MAIN_PATH / "config.json"
-RESOURCE_PATH = MAIN_PATH / "resource"
 
+# 游戏素材
+RESOURCE_PATH = MAIN_PATH / "resource"
 GAMEDATA_PATH = RESOURCE_PATH / "gamedata"
+charremoteicon700_path = RESOURCE_PATH / "charremoteicon700"
+itemiconbig_path = RESOURCE_PATH / "itemiconbig"
+
+PLAYER_PATH = MAIN_PATH / "players"
 
 
 def init_dir():

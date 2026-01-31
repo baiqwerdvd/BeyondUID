@@ -666,8 +666,8 @@ FodyWeavers.xsd
 ### CI ###
 result.txt
 
-### ArknightsUID ###
-ArknightsUID/tools/
+### BeyondUID ###
+BeyondUID/tools/
 upload_file.py
 test.py
 test2.py

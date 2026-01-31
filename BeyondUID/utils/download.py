@@ -16,7 +16,7 @@ async def download_file(
         async with sess.get(url) as res:
             content = await res.read()
     except ClientConnectorError:
-        logger.warning(f"[Arknights]{name}下载失败")
+        logger.warning(f"[BeyondUID]{name}下载失败")
         return url, path, name
     async with aiofiles.open(path / name, "wb") as f:
         await f.write(content)

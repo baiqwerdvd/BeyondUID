@@ -13,7 +13,8 @@ from gsuid_core.subscribe import gs_subscribe
 from gsuid_core.sv import SV
 from msgspec import convert
 
-from ..beyonduid_config.byd_config import BydConfig
+from BeyondUID.beyonduid_config.beyond_config import BeyondConfig
+
 from .draw_img import get_ann_img
 from .get_data import (
     BASE_URL,
@@ -29,7 +30,7 @@ sv_ann = SV("终末地公告")
 sv_ann_sub = SV("订阅终末地公告", pm=3)
 
 task_name_ann = "订阅终末地公告"
-ann_minute_check: int = BydConfig.get_config("AnnMinuteCheck").data
+ann_minute_check: int = BeyondConfig.get_config("AnnMinuteCheck").data
 
 
 @sv_ann.on_command("公告")
