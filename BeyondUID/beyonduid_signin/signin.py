@@ -20,6 +20,12 @@ from .model import (
 )
 
 
+class AlreadySignedError(Exception):
+    """重复签到异常"""
+
+    pass
+
+
 class SklandGameName(StrEnum):
     Arknights = "arknights"
     Endfield = "endfield"
@@ -27,6 +33,21 @@ class SklandGameName(StrEnum):
 
 ENDFIELD_ATTENDANCE_URL = "https://zonai.skland.com/web/v1/game/endfield/attendance"
 ENDFIELD_ATTENDANCE_RECORD_URL = "https://zonai.skland.com/web/v1/game/endfield/attendance/record"
+
+
+def _handle_403_response(response: httpx.Response) -> None:
+    if response.status_code != 403:
+        return
+
+    logger.warning(response.text)
+    try:
+        error_data = response.json()
+        if error_data.get("code") == 10001 and "重复签到" in error_data.get("message", ""):
+            raise AlreadySignedError("今日已签到")
+    except (ValueError, KeyError, AlreadySignedError):
+        raise
+    except Exception:
+        pass
 
 
 async def initialize(client: SklandClient, user: BeyondUser) -> None:
@@ -87,8 +108,7 @@ async def get_attendance_info(client: SklandClient) -> EndfieldAttendanceInfoRes
         ENDFIELD_ATTENDANCE_URL,
         headers=headers,
     )
-    if response.status_code == 403:
-        logger.warning(response.text)
+    _handle_403_response(response)
     response.raise_for_status()
 
     return EndfieldAttendanceInfoResponse.model_validate_json(response.content)
@@ -109,8 +129,7 @@ async def get_attendance_record(client: SklandClient) -> EndfieldAttendanceRecor
         ENDFIELD_ATTENDANCE_RECORD_URL,
         headers=headers,
     )
-    if response.status_code == 403:
-        logger.warning(response.text)
+    _handle_403_response(response)
     response.raise_for_status()
 
     return EndfieldAttendanceRecordResponse.model_validate_json(response.content)
@@ -137,8 +156,7 @@ async def do_attendance(client: SklandClient, uid: str) -> EndfieldSignResultRes
         headers=headers,
     )
     logger.debug(f"签到返回内容: {response.text}")
-    if response.status_code == 403:
-        logger.warning(response.text)
+    _handle_403_response(response)
     response.raise_for_status()
 
     return EndfieldSignResultResponse.model_validate_json(response.content)
@@ -175,6 +193,8 @@ async def sign_in(uid: str, game_name: SklandGameName = SklandGameName.Endfield)
             # 已经签到过，获取签到记录
             try:
                 record_resp = await get_attendance_record(client)
+            except AlreadySignedError:
+                return f"{sign_title} 今日已签到！"
             except Exception as e:
                 logger.error(f"{sign_title} 获取签到记录失败: {e}")
                 return f"{sign_title} 获取签到记录失败: {e!s}"
@@ -219,6 +239,8 @@ async def sign_in(uid: str, game_name: SklandGameName = SklandGameName.Endfield)
 
         return f"{sign_title} 签到成功！"
 
+    except AlreadySignedError:
+        return f"{sign_title} 今日已签到！"
     except httpx.HTTPStatusError as e:
         logger.error(f"{sign_title} HTTP错误: {e}")
         return f"{sign_title} 网络请求失败: {e.response.status_code}"
