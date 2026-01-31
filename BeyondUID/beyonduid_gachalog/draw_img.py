@@ -649,5 +649,8 @@ async def draw_gachalogs_img(uid: str, bot: Bot, ev: Event):
                 )
         current_y += h + ROW_GAP
 
+    footer_img = Image.open(TEXT_PATH / "footer.png")
+    img.paste(footer_img, (100, current_y - ROW_GAP - 10), mask=footer_img)
+
     await bot.send(await convert_img(img))
     return None
