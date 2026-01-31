@@ -1,6 +1,10 @@
 from gsuid_core.utils.download_resource.download_core import download_all_file
 
-from BeyondUID.utils.resource.RESOURCE_PATH import charremoteicon700_path, itemiconbig_path
+from BeyondUID.utils.resource.RESOURCE_PATH import (
+    charicon_path,
+    charremoteicon700_path,
+    itemiconbig_path,
+)
 
 
 async def download_all_file_from_cos():
@@ -9,5 +13,6 @@ async def download_all_file_from_cos():
         {
             "resource/charremoteicon700": charremoteicon700_path,
             "resource/itemiconbig": itemiconbig_path,
+            "resource/charicon": charicon_path,
         },
     )

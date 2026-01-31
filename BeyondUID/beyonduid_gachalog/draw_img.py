@@ -15,6 +15,7 @@ from pydantic import BaseModel
 
 from BeyondUID.utils.resource.RESOURCE_PATH import (
     PLAYER_PATH,
+    charicon_path,
     charremoteicon700_path,
     itemiconbig_path,
 )
@@ -151,18 +152,18 @@ async def _draw_card(
 
     # 加载头像：角色用 charicon/charremoteicon700，武器用 weapon_icon 或占位
     if char_id is not None:
-        icon_path = charremoteicon700_path / f"icon_{char_id}.png"
+        icon_path = charicon_path / f"icon_{char_id}.png"
         if not icon_path.exists():
-            icon_path = charremoteicon700_path / "icon_chr_unknown_man.png"
+            icon_path = charicon_path / "icon_chr_unknown_man.png"
 
         avatar = Image.open(icon_path).convert("RGBA")
 
         sg_bg_img = Image.open(TEXT_PATH / "sg_bg.png").convert("RGBA")
-        sg_bg_img.paste(avatar, (15, 9), avatar)
+        sg_bg_img.paste(avatar, (14, 9), avatar)
     else:
         icon_path = itemiconbig_path / f"{weapon_id}.png"
         if not icon_path.exists():
-            icon_path = charremoteicon700_path / "icon_chr_unknown_man.png"
+            icon_path = charicon_path / "icon_chr_unknown_man.png"
 
         avatar = Image.open(icon_path).convert("RGBA")
         avatar = crop_center_img(avatar, CARD_W - 21, CARD_H - 60)
@@ -228,7 +229,7 @@ def _build_pool_header_layer(
             rep_char_id = "chr_default"
         icon_path = charremoteicon700_path / f"icon_{rep_char_id}.png"
         if not icon_path.exists():
-            icon_path = charremoteicon700_path / "icon_chr_default.png"
+            icon_path = charicon_path / "icon_chr_default.png"
         rep_img = Image.open(icon_path).convert("RGBA").resize((400, 400))
     else:
         rep_weapon_id: str | None = None
@@ -246,7 +247,7 @@ def _build_pool_header_layer(
         icon_path = itemiconbig_path / f"{rep_weapon_id}.png"
         if not icon_path.exists():
             logger.warning(f"Weapon icon not found for {rep_weapon_id}, using default char icon")
-            icon_path = charremoteicon700_path / "icon_chr_default.png"
+            icon_path = charicon_path / "icon_chr_default.png"
         rep_img = Image.open(icon_path).convert("RGBA").resize((400, 400))
 
     rep_img = rep_img.crop((0, 100, 400, 300))
@@ -471,7 +472,6 @@ async def draw_gachalogs_img(uid: str, bot: Bot, ev: Event):
         if not item.isFree:
             pity_limited += 1
 
-    # 按池类型取数据与统计
     def _limited_pred(c: CharRecordItem) -> bool:
         return c.poolId.startswith("special_")
 
@@ -542,7 +542,7 @@ async def draw_gachalogs_img(uid: str, bot: Bot, ev: Event):
     title_img.paste(frame_fg_img, (52, 413), mask=frame_fg_img)
     title_img_draw = ImageDraw.Draw(title_img)
     title_img_draw.text((327, 507), f"UID: {uid}", font=core_font(20), fill="black", anchor="mm")
-    role_name = "Role Name"
+    role_name = ev.sender["nickname"]
     title_img_draw.text((222, 458), role_name, font=core_font(36), fill="white", anchor="lm")
 
     title_img_draw.text(

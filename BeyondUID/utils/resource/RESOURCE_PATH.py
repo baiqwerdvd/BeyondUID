@@ -12,6 +12,7 @@ CONFIG_PATH = MAIN_PATH / "config.json"
 RESOURCE_PATH = MAIN_PATH / "resource"
 GAMEDATA_PATH = RESOURCE_PATH / "gamedata"
 charremoteicon700_path = RESOURCE_PATH / "charremoteicon700"
+charicon_path = RESOURCE_PATH / "charicon"
 itemiconbig_path = RESOURCE_PATH / "itemiconbig"
 
 PLAYER_PATH = MAIN_PATH / "players"
