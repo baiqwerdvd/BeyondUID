@@ -34,4 +34,5 @@ async def sync_gachalog(bot: Bot, ev: Event):
     if uid is None or platform_roleid is None:
         return await bot.send("请先绑定终末地账号，使用指令：byd扫码登录 进行绑定")
 
+    await bot.send(f"UID{uid}开始执行[刷新抽卡记录],需要一定时间...请勿重复触发！")
     await fetch_full_record(uid, platform_roleid, bot, ev)
