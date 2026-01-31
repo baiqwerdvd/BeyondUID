@@ -11,6 +11,27 @@
         "need_admin": false
       }
     ]
+  }, 
+  "信息查询": {
+    "desc": "信息查询功能",
+    "data": [
+      {
+        "name": "刷新抽卡记录",
+        "desc": "先刷新抽卡记录",
+        "eg": "刷新抽卡记录",
+        "need_ck": true,
+        "need_sk": false,
+        "need_admin": false
+      },
+      {
+        "name": "抽卡记录",
+        "desc": "查询抽卡记录",
+        "eg": "抽卡记录",
+        "need_ck": true,
+        "need_sk": false,
+        "need_admin": false
+      }
+    ]
   },
   "签到服务": {
     "desc": "该配置项仅针对个人使用",
