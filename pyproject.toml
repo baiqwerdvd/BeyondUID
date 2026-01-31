@@ -10,7 +10,7 @@ dependencies = [
   "pydantic>=2.10.4",
   "fastapi>=0.115.6",
   "cryptography>=46.0.3",
-  "SklandCore>=0.0.1",
+  "sklandcore>=0.0.1",
   "qrcode>=8.2.0",
 ]
 requires-python = ">=3.10,<4.0"

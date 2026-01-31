@@ -1,24 +1,26 @@
 import json
 import math
+from pathlib import Path
+from datetime import datetime
 from collections import defaultdict
 from collections.abc import Callable
-from datetime import datetime
-from pathlib import Path
+
+from PIL import Image, ImageDraw
+from pydantic import BaseModel
 
 from gsuid_core.bot import Bot
 from gsuid_core.logger import logger
 from gsuid_core.models import Event
 from gsuid_core.utils.image.convert import convert_img
 from gsuid_core.utils.image.image_tools import core_font, crop_center_img
-from PIL import Image, ImageDraw
-from pydantic import BaseModel
-
 from BeyondUID.utils.resource.RESOURCE_PATH import (
     PLAYER_PATH,
     charicon_path,
-    charremoteicon700_path,
     itemiconbig_path,
+    charremoteicon700_path,
 )
+
+from ..utils.image import get_footer
 
 CARD_W = 175
 BAR_H = 26
@@ -33,6 +35,7 @@ UP_ITEMS = {
     "special_1_0_1": "chr_0016_laevat",
     "weponbox_1_0_1": "wpn_sword_0006",
 }
+
 
 
 class BaseGachaRecordItem(BaseModel):
@@ -649,7 +652,7 @@ async def draw_gachalogs_img(uid: str, bot: Bot, ev: Event):
                 )
         current_y += h + ROW_GAP
 
-    footer_img = Image.open(TEXT_PATH / "footer.png")
+    footer_img = get_footer()
     img.paste(footer_img, (100, current_y - ROW_GAP - 10), mask=footer_img)
 
     await bot.send(await convert_img(img))

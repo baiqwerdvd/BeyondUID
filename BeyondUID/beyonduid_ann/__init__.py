@@ -1,30 +1,30 @@
-import asyncio
 import json
 import random
+import asyncio
 
 import aiohttp
+from msgspec import convert
+
+from gsuid_core.sv import SV
 from gsuid_core.aps import scheduler
 from gsuid_core.bot import Bot
-from gsuid_core.data_store import get_res_path
 from gsuid_core.logger import logger
 from gsuid_core.models import Event
 from gsuid_core.segment import MessageSegment
 from gsuid_core.subscribe import gs_subscribe
-from gsuid_core.sv import SV
-from msgspec import convert
-
+from gsuid_core.data_store import get_res_path
 from BeyondUID.beyonduid_config.beyond_config import BeyondConfig
 
+from .model import BulletinAggregate, BulletinTargetData
 from .draw_img import get_ann_img
 from .get_data import (
     BASE_URL,
-    BULLETIN_FILE,
-    GAME_CODE,
     LANGUAGE,
-    check_bulletin_update,
+    GAME_CODE,
+    BULLETIN_FILE,
     get_announcement,
+    check_bulletin_update,
 )
-from .model import BulletinAggregate, BulletinTargetData
 
 sv_ann = SV("终末地公告")
 sv_ann_sub = SV("订阅终末地公告", pm=3)
