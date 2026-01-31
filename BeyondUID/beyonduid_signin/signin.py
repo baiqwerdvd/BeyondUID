@@ -39,7 +39,7 @@ async def initialize(client: SklandClient, user: BeyondUser) -> None:
     else:
         client._device_id = await getDid()
         user.device_id = client._device_id
-        BeyondUser.update_data(
+        await BeyondUser.update_data(
             bot_id=user.bot_id,
             user_id=user.user_id,
             uid=user.uid,
