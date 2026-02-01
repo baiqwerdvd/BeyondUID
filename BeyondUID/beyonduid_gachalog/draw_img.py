@@ -553,7 +553,8 @@ async def draw_gachalogs_img(uid: str, bot: Bot, ev: Event):
     title_img.paste(frame_fg_img, (52, 413), mask=frame_fg_img)
     title_img_draw = ImageDraw.Draw(title_img)
     title_img_draw.text((327, 507), f"UID: {uid}", font=core_font(20), fill="black", anchor="mm")
-    role_name = ev.sender["nickname"]
+
+    role_name = ev.sender.get("nickname", "")
     title_img_draw.text((222, 458), role_name, font=core_font(36), fill="white", anchor="lm")
 
     title_img_draw.text(
