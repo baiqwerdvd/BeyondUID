@@ -33,7 +33,7 @@ async def open_switch_func(bot: Bot, ev: Event):
         return await bot.send(UID_HINT)
     logger.info(f"[beyond] [{user_id}] 角色ID为[{platform_roleid}]")
 
-    c_name = f"[beyond] {config_name}"
+    c_name = f"[Beyond] {config_name}"
 
     if "开启" in ev.command:
         im = f"[beyond]已为[PlatformRoleID{platform_roleid}]开启{config_name}功能。"

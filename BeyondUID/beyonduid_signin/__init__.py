@@ -33,9 +33,9 @@ async def get_sign_func(bot: Bot, ev: Event):
 @sv_sign_config.on_fullmatch("全部重签")
 async def recheck(bot: Bot, ev: Event):
     logger.info("开始执行[全部重签]")
-    await bot.send("🚩 [Beyond] [全部重签] 已开始执行...")
+    await bot.send("[Beyond] [全部重签] 已开始执行...")
     await send_daily_sign(True)
-    await bot.send("🚩 [Beyond] [全部重签] 执行完成！")
+    await bot.send("[Beyond] [全部重签] 执行完成！")
 
 
 async def sign_in_task(platform_roleid: str | int) -> str:
@@ -44,6 +44,7 @@ async def sign_in_task(platform_roleid: str | int) -> str:
 
 @scheduler.scheduled_job("cron", hour=SIGN_TIME[0], minute=SIGN_TIME[1])
 async def byd_sign_at_night():
+    logger.info("[Beyond] 定时任务触发，开始执行[每日全部签到]")
     await send_daily_sign()
 
 

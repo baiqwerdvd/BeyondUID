@@ -12,6 +12,11 @@ CONIFG_DEFAULT: dict[str, GSC] = {
         "关闭后将不再给任何人推送当天签到任务完成情况",
         False,
     ),
+    "SchedSignin": GsBoolConfig(
+        "定时签到",
+        "开启后每晚00:30将开始自动签到任务",
+        True,
+    ),
     "AnnMinuteCheck": GsIntConfig(
         "公告推送时间检测（单位min）", "公告推送时间检测（单位min）", 1, 60
     ),
