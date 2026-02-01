@@ -46,8 +46,8 @@
       },
       {
         "name": "自动签到",
-        "desc": "开启/关闭自动签到",
-        "eg": "自动签到",
+        "desc": "自动签到",
+        "eg": "开启/关闭自动签到",
         "need_ck": true,
         "need_sk": false,
         "need_admin": false
