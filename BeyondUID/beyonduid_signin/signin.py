@@ -12,6 +12,7 @@ from sklandcore.signature import get_web_signed_headers
 from sklandcore.skd_client import SklandClient
 
 from BeyondUID.utils.database.models import BeyondUser
+from BeyondUID.utils.error_reply import UID_HINT
 
 from .model import (
     EndfieldAttendanceInfoResponse,
@@ -162,15 +163,18 @@ async def do_attendance(client: SklandClient, uid: str) -> EndfieldSignResultRes
     return EndfieldSignResultResponse.model_validate_json(response.content)
 
 
-async def sign_in(uid: str, game_name: SklandGameName = SklandGameName.Endfield) -> str:
+async def sign_in(
+    platform_roleid: str,
+    game_name: SklandGameName = SklandGameName.Endfield,
+) -> str:
     sign_title = f"[{game_name}] [签到]"
-    logger.info(f"{sign_title} {uid} 开始执行签到")
+    logger.info(f"{sign_title} {platform_roleid} 开始执行签到")
 
     user = await BeyondUser.get_user_only_by_roleid(
-        platform_roleid=uid,
+        platform_roleid=platform_roleid,
     )
     if not user:
-        return f"{sign_title} 未找到绑定信息，请先绑定游戏账号！"
+        return UID_HINT
 
     client = SklandClient("")
     await initialize(client, user)
@@ -211,7 +215,7 @@ async def sign_in(uid: str, game_name: SklandGameName = SklandGameName.Endfield)
             return f"{sign_title} 今日已签到！"
 
         # 执行签到
-        sign_result = await do_attendance(client, uid)
+        sign_result = await do_attendance(client, platform_roleid)
         if sign_result.code != 0:
             return f"{sign_title} 签到失败: {sign_result.message}"
 

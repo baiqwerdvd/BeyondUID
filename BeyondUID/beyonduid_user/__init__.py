@@ -48,6 +48,7 @@ async def on_beyond_scan_login(bot: Bot, ev: Event):
 
     await bot.send(
         [
+            MessageSegment.at(ev.user_id),
             MessageSegment.text("请使用以下应用扫码登录：\n" + " ".join(app_names)),
             MessageSegment.image(await convert_img(data.getvalue())),
         ],
@@ -122,6 +123,30 @@ async def on_beyond_scan_login(bot: Bot, ev: Event):
             return
     uid: str = binding_list_data.list[0].bindingList[0].uid
     platform_roleid = binding_list_data.list[0].bindingList[0].roles[0].roleId
+
+    # 二次确认绑定
+    msgs = [
+        MessageSegment.at(ev.user_id),
+        MessageSegment.text("请确认绑定信息：\n"),
+        MessageSegment.text(f"Endfield账号UID：{uid}\n"),
+        MessageSegment.text(f"角色ID：{platform_roleid}\n"),
+        MessageSegment.text("回复“确认”以绑定，或回复“取消”以终止登录流程。"),
+    ]
+    await bot.send(msgs)
+    try:
+        async with asyncio.timeout(60):
+            while True:
+                resp = await bot.receive_mutiply_resp()
+                if resp is not None:
+                    text = resp.text
+                    if text == "确认":
+                        break
+                    elif text == "取消":
+                        await bot.send("绑定已取消。")
+                        return
+    except asyncio.TimeoutError:
+        await bot.send("确认绑定超时，登录流程终止。")
+        return
 
     await BeyondBind.insert_uid(
         bot_id=bot.bot_id,

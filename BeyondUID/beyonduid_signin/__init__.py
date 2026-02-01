@@ -7,6 +7,7 @@ from gsuid_core.sv import SV
 
 from BeyondUID.beyonduid_config.beyond_config import BeyondConfig
 from BeyondUID.utils.database.models import BeyondBind
+from BeyondUID.utils.error_reply import UID_HINT
 
 from .signin import sign_in
 
@@ -22,7 +23,7 @@ async def get_sign_func(bot: Bot, ev: Event):
     logger.info(f"[Beyond] [签到] 用户: {ev.user_id}")
     uid = await BeyondBind.get_uid_by_game(ev.user_id, ev.bot_id)
     if uid is None:
-        return await bot.send("请先绑定终末地账号，使用指令：byd扫码登录 进行绑定")
+        return await bot.send(UID_HINT)
     logger.info(f"[Beyond] [签到] UID: {uid}")
     result = await sign_in(str(uid))
     await bot.send(result)
@@ -37,8 +38,8 @@ async def recheck(bot: Bot, ev: Event):
     await bot.send("🚩 [Beyond] [全部重签] 执行完成！")
 
 
-async def sign_in_task(uid: str | int) -> str:
-    return await sign_in(str(uid))
+async def sign_in_task(platform_roleid: str | int) -> str:
+    return await sign_in(str(platform_roleid))
 
 
 @scheduler.scheduled_job("cron", hour=SIGN_TIME[0], minute=SIGN_TIME[1])
