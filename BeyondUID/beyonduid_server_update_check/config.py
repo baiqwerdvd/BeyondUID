@@ -1,8 +1,8 @@
-from enum import StrEnum
+from enum import Enum
 from typing import ClassVar
 
 
-class UpdatePriority(StrEnum):
+class UpdatePriority(Enum):
     CRITICAL = "critical"
     HIGH = "high"
     MEDIUM = "medium"
@@ -41,7 +41,7 @@ class UpdateConfig:
         return cls.PRIORITY_ICONS.get(priority, "📝")
 
 
-class ConfigType(StrEnum):
+class ConfigType(Enum):
     NETWORK_CONFIG = "network_config"
     GAME_CONFIG = "game_config"
     RES_VERSION = "res_version"

@@ -1,7 +1,7 @@
 import json
 from contextlib import asynccontextmanager
 from datetime import datetime
-from typing import Any, get_args
+from typing import Any, TypeVar, get_args
 from uuid import UUID, uuid4
 
 import aiohttp
@@ -32,6 +32,7 @@ from .model import (
 from .utils import RemoteConfigUtils, U8ConfigUtils, normalize_data_for_comparison
 
 REQUEST_TIMEOUT = 30
+T = TypeVar("T", bound=BaseModel)
 
 
 class UpdateChecker:
@@ -49,10 +50,7 @@ class UpdateChecker:
         yield self.session
 
     @staticmethod
-    def _convert_to_model[T: BaseModel](
-        data: dict[str, Any],
-        model: type[T],
-    ) -> T | None:
+    def _convert_to_model(data: dict[str, Any], model: type[T]) -> T | None:
         try:
             return model.model_validate(data)
         except ValidationError as e:
@@ -80,8 +78,7 @@ class UpdateChecker:
                 async with session.get(target_url) as response:
                     if response.status != 200:
                         logger.warning(
-                            f"Failed to fetch U8 config from {target_url}: "
-                            f"status {response.status}"
+                            f"Failed to fetch U8 config from {target_url}: status {response.status}"
                         )
                         return None
                     encrypted_bytes = await response.read()
@@ -103,9 +100,7 @@ class UpdateChecker:
         if self._shared_rand_str:
             return self._shared_rand_str
 
-        win_url = self._build_url(
-            REMOTE_CONFIG_URLS[ConfigType.LAUNCHER_VERSION], Platform.WINDOWS
-        )
+        win_url = self._build_url(REMOTE_CONFIG_URLS[ConfigType.LAUNCHER_VERSION], Platform.WINDOWS)
         win_launcher = await self._fetch_single_config(win_url, ConfigType.LAUNCHER_VERSION)
 
         if isinstance(win_launcher, LauncherVersion):
@@ -186,9 +181,7 @@ class UpdateChecker:
             if model:
                 result = self._convert_to_model(data, model)
                 if result is None:
-                    logger.warning(
-                        f"Model validation failed for {config_type.value}, using raw data"
-                    )
+                    logger.warning(f"Model validation failed for {config_type.value}, using raw data")
                     return data
                 return result
             elif config_type == ConfigType.GAME_CONFIG:
@@ -213,9 +206,7 @@ class UpdateChecker:
         launcher_url = self._build_url(REMOTE_CONFIG_URLS[ConfigType.LAUNCHER_VERSION], platform)
         launcher_data = await self._fetch_single_config(launcher_url, ConfigType.LAUNCHER_VERSION)
         if launcher_data is None:
-            logger.error(
-                f"Failed to fetch LAUNCHER_VERSION for {platform.value}. Aborting full fetch."
-            )
+            logger.error(f"Failed to fetch LAUNCHER_VERSION for {platform.value}. Aborting full fetch.")
             return None
         results["launcher_version"] = launcher_data
 
@@ -238,8 +229,7 @@ class UpdateChecker:
             config_data = await self._fetch_single_config(url, config_type)
             if config_data is None:
                 logger.error(
-                    f"Failed to fetch {config_type.value} for {platform.value}. "
-                    "Aborting full fetch."
+                    f"Failed to fetch {config_type.value} for {platform.value}. Aborting full fetch."
                 )
                 return None
             results[config_type.name.lower()] = config_data
@@ -248,13 +238,9 @@ class UpdateChecker:
             res_version_url = self._build_url(
                 REMOTE_CONFIG_URLS[ConfigType.RES_VERSION], platform, fetch_params
             )
-            res_version_data = await self._fetch_single_config(
-                res_version_url, ConfigType.RES_VERSION
-            )
+            res_version_data = await self._fetch_single_config(res_version_url, ConfigType.RES_VERSION)
             if res_version_data is None:
-                logger.error(
-                    f"Failed to fetch RES_VERSION for {platform.value}. Aborting full fetch."
-                )
+                logger.error(f"Failed to fetch RES_VERSION for {platform.value}. Aborting full fetch.")
                 return None
             results["res_version"] = res_version_data
         else:
@@ -307,9 +293,7 @@ class UpdateChecker:
             ),
         )
 
-    async def save_config(
-        self, new_remote_data: RemoteConfigRemoteData, platform: Platform
-    ) -> bool:
+    async def save_config(self, new_remote_data: RemoteConfigRemoteData, platform: Platform) -> bool:
         storage = await self.load_cached_config()
         current_time = datetime.now().isoformat()
 
@@ -348,16 +332,14 @@ class UpdateChecker:
                 value_type = get_args(model_fields.annotation)[1]
 
                 new_data = dict(storage_data_with_uuid.data)
-                new_data[current_uuid] = value_type(
-                    data=remote_data_item, fetch_time=current_time
-                )
+                new_data[current_uuid] = value_type(data=remote_data_item, fetch_time=current_time)
 
                 storage_data_with_uuid = storage_type(
                     data=new_data,
                     last_updated=current_time,
                     last_uuid=current_uuid,
                 )
-                logger.debug(f"配置 for {platform.value} - {config_name} 已更新。")
+                logger.trace(f"配置 for {platform.value} - {config_name} 已更新。")
 
             return storage_data_with_uuid
 
@@ -394,9 +376,7 @@ class UpdateChecker:
 
         return True
 
-    def _get_latest_data_from_storage(
-        self, storage_item: RemoteConfigDataWithUUID
-    ) -> dict[str, Any]:
+    def _get_latest_data_from_storage(self, storage_item: RemoteConfigDataWithUUID) -> dict[str, Any]:
         if storage_item and storage_item.data and storage_item.last_uuid in storage_item.data:
             stored_config_data = storage_item.data[storage_item.last_uuid].data
             if isinstance(stored_config_data, BaseModel):
@@ -404,9 +384,7 @@ class UpdateChecker:
             return stored_config_data
         return {}
 
-    def parse_config_data(
-        self, data: RemoteConfigRemoteData | PlatformLocalConfig
-    ) -> dict[str, Any]:
+    def parse_config_data(self, data: RemoteConfigRemoteData | PlatformLocalConfig) -> dict[str, Any]:
         if isinstance(data, RemoteConfigRemoteData):
             return {
                 "network_config": data.network_config.model_dump(mode="json"),
@@ -454,9 +432,9 @@ class UpdateChecker:
             "game_config": parsed_new["game_config"],
         }
 
-        updated = normalize_data_for_comparison(
-            old_platform_data
-        ) != normalize_data_for_comparison(new_platform_data)
+        updated = normalize_data_for_comparison(old_platform_data) != normalize_data_for_comparison(
+            new_platform_data
+        )
 
         await self.save_config(new_remote_data, platform)
 
@@ -475,8 +453,7 @@ class UpdateChecker:
         return ConfigUpdate(
             old=old_data,
             new=new_data,
-            updated=normalize_data_for_comparison(old_data)
-            != normalize_data_for_comparison(new_data),
+            updated=normalize_data_for_comparison(old_data) != normalize_data_for_comparison(new_data),
         )
 
     async def check_platform_updates(self, platform: Platform) -> UpdateCheckResult:

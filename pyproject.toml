@@ -10,7 +10,7 @@ dependencies = [
   "pydantic>=2.10.4",
   "fastapi>=0.115.6",
   "cryptography>=46.0.3",
-  "sklandcore>=0.0.1",
+  "sklandcore>=0.0.2",
   "qrcode>=8.2.0",
 ]
 requires-python = ">=3.10,<4.0"
@@ -18,10 +18,10 @@ readme = "README.md"
 license = { text = "GPL-3.0-or-later" }
 
 [tool.gscore]
-auto_update_dep = ["SklandCore>=0.0.1"]
+auto_update_dep = ["sklandcore>=0.0.2"]
 
 [tool.ruff]
-line-length = 98
+line-length = 108
 target-version = "py310"
 
 [tool.ruff.lint]
@@ -51,3 +51,7 @@ ignore = [
 [tool.ruff.lint.flake8-pytest-style]
 fixture-parentheses = false
 mark-parentheses = false
+
+[tool.basedpyright]
+pythonVersion = "3.10"
+typeCheckingMode = "standard"

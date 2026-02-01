@@ -38,9 +38,7 @@ async def open_switch_func(bot: Bot, ev: Event):
     if "开启" in ev.command:
         im = f"[beyond]已为[PlatformRoleID{platform_roleid}]开启{config_name}功能。"
 
-        if PRIV_MAP[config_name] is None and await gs_subscribe.get_subscribe(
-            c_name, uid=platform_roleid
-        ):
+        if PRIV_MAP[config_name] is None and await gs_subscribe.get_subscribe(c_name, uid=platform_roleid):
             await Subscribe.update_data_by_data(
                 {
                     "task_name": c_name,

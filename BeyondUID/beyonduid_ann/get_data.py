@@ -56,12 +56,11 @@ def load_bulletin_aggregate(bulletin_path: Path) -> BulletinAggregate:
 
 
 async def fetch_aggregate_data(
-    session: aiohttp.ClientSession,
-    platform: Platform,
+    session: aiohttp.ClientSession, platform: Platform
 ) -> BulletinTargetData | None:
     url = (
         f"{BASE_URL}/bulletin/v2/aggregate"
-        f"?lang={LANGUAGE}&channel=1&subChannel=1&platform={platform}"
+        f"?lang={LANGUAGE}&channel=1&subChannel=1&platform={platform.value}"
         f"&type=1&code={GAME_CODE}&hideDetail=1"
     )
 
@@ -75,10 +74,10 @@ async def fetch_aggregate_data(
 
             return convert(aggregate_data, BulletinTargetData)
         else:
-            logger.warning(f"API returned error code for {platform}: {data.get('code')}, {url}")
+            logger.warning(f"API returned error code for {platform.value}: {data.get('code')}, {url}")
             return None
     except (aiohttp.ClientError, json.JSONDecodeError, msgspec.DecodeError) as e:
-        logger.error(f"Failed to fetch aggregate data for {platform}: {e}")
+        logger.error(f"Failed to fetch aggregate data for {platform.value}: {e}")
         return None
 
 
@@ -150,12 +149,8 @@ async def process_bulletin_updates(
 
 
 def save_bulletin_aggregate(bulletin_aggregate: BulletinAggregate, bulletin_path: Path) -> None:
-    bulletin_aggregate.data = dict(
-        sorted(bulletin_aggregate.data.items(), key=lambda x: int(x[0]))
-    )
-    bulletin_aggregate.update = dict(
-        sorted(bulletin_aggregate.update.items(), key=lambda x: x[1].cid)
-    )
+    bulletin_aggregate.data = dict(sorted(bulletin_aggregate.data.items(), key=lambda x: int(x[0])))
+    bulletin_aggregate.update = dict(sorted(bulletin_aggregate.update.items(), key=lambda x: x[1].cid))
 
     try:
         data = msgjson.decode(msgjson.encode(bulletin_aggregate))
@@ -183,7 +178,7 @@ async def check_bulletin_update() -> dict[str, BulletinData]:
                 platform_data_map[platform] = result
 
     for platform, platform_data in platform_data_map.items():
-        setattr(bulletin_aggregate.target, platform, platform_data)
+        setattr(bulletin_aggregate.target, platform.value, platform_data)
 
     all_updates = []
     for platform_data in platform_data_map.values():

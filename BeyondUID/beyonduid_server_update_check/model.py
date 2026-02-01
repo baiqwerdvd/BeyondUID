@@ -1,11 +1,13 @@
-from enum import StrEnum
-from typing import Any
+from enum import Enum
+from typing import Any, Generic, TypeVar
 from uuid import UUID
 
 from pydantic import BaseModel, Field
 
+T = TypeVar("T")
 
-class Platform(StrEnum):
+
+class Platform(Enum):
     DEFAULT = "default"
     WINDOWS = "Windows"
     ANDROID = "Android"
@@ -49,10 +51,7 @@ class EngineConfig(BaseModel):
 
         try:
             configs_dict = json.loads(self.Configs)
-            return {
-                key: EngineConfigParam.model_validate(value)
-                for key, value in configs_dict.items()
-            }
+            return {key: EngineConfigParam.model_validate(value) for key, value in configs_dict.items()}
         except (json.JSONDecodeError, ValueError):
             return {}
 
@@ -144,12 +143,12 @@ class RemoteConfigError(BaseModel):
     message: str = ""
 
 
-class RemoteConfigData[T](BaseModel):
+class RemoteConfigData(BaseModel, Generic[T]):
     data: T
     fetch_time: str
 
 
-class RemoteConfigDataWithUUID[T](BaseModel):
+class RemoteConfigDataWithUUID(BaseModel, Generic[T]):
     data: dict[UUID, RemoteConfigData[T]] = Field(default_factory=dict)
     last_updated: str
     last_uuid: UUID

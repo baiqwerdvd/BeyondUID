@@ -17,7 +17,5 @@ CONIFG_DEFAULT: dict[str, GSC] = {
         "开启后每晚00:30将开始自动签到任务",
         True,
     ),
-    "AnnMinuteCheck": GsIntConfig(
-        "公告推送时间检测（单位min）", "公告推送时间检测（单位min）", 1, 60
-    ),
+    "AnnMinuteCheck": GsIntConfig("公告推送时间检测（单位min）", "公告推送时间检测（单位min）", 1, 60),
 }

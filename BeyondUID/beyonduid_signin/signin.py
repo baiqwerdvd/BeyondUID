@@ -1,4 +1,4 @@
-from enum import StrEnum
+from enum import Enum
 from typing import Literal
 
 import httpx
@@ -27,7 +27,7 @@ class AlreadySignedError(Exception):
     pass
 
 
-class SklandGameName(StrEnum):
+class SklandGameName(Enum):
     Arknights = "arknights"
     Endfield = "endfield"
 
@@ -167,7 +167,7 @@ async def sign_in(
     platform_roleid: str,
     game_name: SklandGameName = SklandGameName.Endfield,
 ) -> str:
-    sign_title = f"[{game_name}] [签到]"
+    sign_title = f"[{game_name.value}] [签到]"
     logger.info(f"{sign_title} {platform_roleid} 开始执行签到")
 
     user = await BeyondUser.get_user_only_by_roleid(

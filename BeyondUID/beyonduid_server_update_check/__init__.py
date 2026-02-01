@@ -1,7 +1,7 @@
 import asyncio
 import json
 import random
-from typing import Any
+from typing import Any, TypeVar
 
 from gsuid_core.aps import scheduler
 from gsuid_core.bot import Bot
@@ -32,6 +32,8 @@ CHECK_INTERVAL_SECONDS = 10
 
 SEPARATOR = "━" * 24
 THIN_SEPARATOR = "─" * 24
+
+T = TypeVar("T", bound=BaseModel)
 
 
 class OutputFormatter:
@@ -114,15 +116,13 @@ class NotificationManager:
 
         if new_keys:
             new_items = [
-                OutputFormatter.format_new_item(key, new_dict.get(key))
-                for key in sorted(new_keys)
+                OutputFormatter.format_new_item(key, new_dict.get(key)) for key in sorted(new_keys)
             ]
             messages.extend(new_items)
 
         if delete_keys:
             deleted_items = [
-                OutputFormatter.format_deleted_item(key, old_dict.get(key))
-                for key in sorted(delete_keys)
+                OutputFormatter.format_deleted_item(key, old_dict.get(key)) for key in sorted(delete_keys)
             ]
             messages.extend(deleted_items)
 
@@ -157,7 +157,7 @@ class NotificationManager:
         return True
 
     @staticmethod
-    def safe_convert_to_model[T: BaseModel](data: dict[str, Any], model: type[T]) -> T:
+    def safe_convert_to_model(data: dict[str, Any], model: type[T]) -> T:
         try:
             return model.model_validate(data)
         except Exception:
@@ -259,22 +259,14 @@ class NotificationManager:
                 elif not is_old_error and not is_new_error:
                     content = ""
                     if attr_name == "launcher_version":
-                        old_model = NotificationManager.safe_convert_to_model(
-                            old_data, LauncherVersion
-                        )
-                        new_model = NotificationManager.safe_convert_to_model(
-                            new_data, LauncherVersion
-                        )
+                        old_model = NotificationManager.safe_convert_to_model(old_data, LauncherVersion)
+                        new_model = NotificationManager.safe_convert_to_model(new_data, LauncherVersion)
                         content = OutputFormatter.format_change(
                             "版本", old_model.version, new_model.version
                         )
                     elif attr_name == "res_version":
-                        old_model = NotificationManager.safe_convert_to_model(
-                            old_data, ResVersion
-                        )
-                        new_model = NotificationManager.safe_convert_to_model(
-                            new_data, ResVersion
-                        )
+                        old_model = NotificationManager.safe_convert_to_model(old_data, ResVersion)
+                        new_model = NotificationManager.safe_convert_to_model(new_data, ResVersion)
                         changes = []
 
                         # Check res_version string changes
@@ -306,16 +298,12 @@ class NotificationManager:
                             old_ver = old_resources.get(name)
                             if old_ver != version:
                                 changes.append(
-                                    OutputFormatter.format_change(
-                                        f"资源[{name}]", old_ver or "无", version
-                                    )
+                                    OutputFormatter.format_change(f"资源[{name}]", old_ver or "无", version)
                                 )
 
                         content = "\n".join(changes) if changes else ""
                     elif attr_name == "engine_config":
-                        content = NotificationManager._format_engine_config_changes(
-                            old_data, new_data
-                        )
+                        content = NotificationManager._format_engine_config_changes(old_data, new_data)
                     elif attr_name in ["game_config", "network_config"]:
                         content = NotificationManager.format_dict_changes(old_data, new_data)
 
@@ -366,9 +354,7 @@ class NotificationManager:
             if not NotificationManager.has_any_update(result):
                 continue
 
-            platform_name = (
-                "Windows 端" if result.platform == Platform.DEFAULT else f"{result.platform} 端"
-            )
+            platform_name = "Windows 端" if result.platform == Platform.DEFAULT else f"{result.platform} 端"
 
             platform_updates = NotificationManager._build_single_update_content(result)
 
@@ -378,14 +364,14 @@ class NotificationManager:
 
             if update_content_str not in grouped_messages:
                 grouped_messages[update_content_str] = []
-                full_update_details[update_content_str] = (
-                    NotificationManager.build_update_message(platform_name, platform_updates)
+                full_update_details[update_content_str] = NotificationManager.build_update_message(
+                    platform_name, platform_updates
                 )
 
             grouped_messages[update_content_str].append(platform)
 
         if not grouped_messages:
-            logger.debug("未检测到任何终末地更新")
+            logger.trace("未检测到任何终末地更新")
             return
 
         messages_to_send: list[str] = []
@@ -407,9 +393,7 @@ class NotificationManager:
                 )["priority"]
                 header_icon = UpdateConfig.get_icon(highest_priority)
 
-                consolidated_header = (
-                    f"{header_icon} 检测到 {'、'.join(platform_names)} 终末地更新"
-                )
+                consolidated_header = f"{header_icon} 检测到 {'、'.join(platform_names)} 终末地更新"
 
                 original_full_message = full_update_details[update_content_str]
                 parts = original_full_message.split(SEPARATOR)
@@ -420,9 +404,7 @@ class NotificationManager:
                 logger.warning(f"检测到 {'、'.join(platform_names)} 终末地更新 (内容一致)")
             else:
                 platform = platforms_with_same_update[0]
-                platform_name = (
-                    "Windows 端" if platform == Platform.DEFAULT else f"{platform.value} 端"
-                )
+                platform_name = "Windows 端" if platform == Platform.DEFAULT else f"{platform.value} 端"
 
                 messages_to_send.append(full_update_details[update_content_str])
 
@@ -505,13 +487,9 @@ async def get_latest_version_android(bot: Bot, ev: Event):
         )
 
         if launcher_data is None:
-            launcher_data = RemoteConfigError(
-                code=-1, reason="解析失败", message="无法解析客户端版本"
-            )
+            launcher_data = RemoteConfigError(code=-1, reason="解析失败", message="无法解析客户端版本")
         if res_version_data is None:
-            res_version_data = RemoteConfigError(
-                code=-1, reason="解析失败", message="无法解析资源版本"
-            )
+            res_version_data = RemoteConfigError(code=-1, reason="解析失败", message="无法解析资源版本")
 
         message = _format_version_info("Android", launcher_data, res_version_data)
         await bot.send(message)
@@ -535,13 +513,9 @@ async def get_latest_version_windows(bot: Bot, ev: Event):
         )
 
         if launcher_data is None:
-            launcher_data = RemoteConfigError(
-                code=-1, reason="解析失败", message="无法解析客户端版本"
-            )
+            launcher_data = RemoteConfigError(code=-1, reason="解析失败", message="无法解析客户端版本")
         if res_version_data is None:
-            res_version_data = RemoteConfigError(
-                code=-1, reason="解析失败", message="无法解析资源版本"
-            )
+            res_version_data = RemoteConfigError(code=-1, reason="解析失败", message="无法解析资源版本")
 
         message = _format_version_info("Windows", launcher_data, res_version_data)
         await bot.send(message)
@@ -735,9 +709,7 @@ async def subscribe_version_updates(bot: Bot, ev: Event):
         await bot.send("订阅失败，请稍后重试")
 
 
-@scheduler.scheduled_job(
-    "interval", seconds=CHECK_INTERVAL_SECONDS, id="byd_check_remote_config_update"
-)
+@scheduler.scheduled_job("interval", seconds=CHECK_INTERVAL_SECONDS, id="byd_check_remote_config_update")
 async def check_remote_config_updates():
     results = {}
     for platform in Platform:
@@ -749,7 +721,7 @@ async def check_remote_config_updates():
             continue
 
         if not NotificationManager.has_any_update(result):
-            logger.debug(f"{platform.value} 端无更新")
+            logger.trace(f"{platform.value} 端无更新")
             continue
 
         results[platform] = result

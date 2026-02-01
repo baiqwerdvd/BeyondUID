@@ -44,9 +44,7 @@ class RemoteConfigUtils:
 class U8ConfigUtils:
     @staticmethod
     def decrypt_bin(cipher: bytes) -> bytes:
-        AES_KEY = bytes.fromhex(
-            "C0F30E1CE763BBC21CC355A34303AC50399444BFF68C4A22AF398C0A166EE143"
-        )
+        AES_KEY = bytes.fromhex("C0F30E1CE763BBC21CC355A34303AC50399444BFF68C4A22AF398C0A166EE143")
         AES_IV = bytes.fromhex("33467861192750649501937264608400")
         decrypted_bytes = aes_decrypt(cipher, AES_KEY, AES_IV)
         return pkcs7_unpad(decrypted_bytes)

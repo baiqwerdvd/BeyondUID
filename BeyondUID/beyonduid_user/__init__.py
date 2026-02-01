@@ -1,6 +1,7 @@
 import asyncio
 import io
 import uuid
+from asyncio.timeouts import timeout
 
 import qrcode
 from gsuid_core.bot import Bot
@@ -57,7 +58,7 @@ async def on_beyond_scan_login(bot: Bot, ev: Event):
     scanCode = None
 
     try:
-        async with asyncio.timeout(60):
+        async with timeout(60):
             while True:
                 status = await client.check_scan_login_status(scan_login_data.scanId)
                 logger.debug(f"Scan status: {status}")
@@ -106,14 +107,12 @@ async def on_beyond_scan_login(bot: Bot, ev: Event):
             + ", ".join(role.roleId for role in binding_list_data.list[0].bindingList[0].roles),
         )
         try:
-            async with asyncio.timeout(60):
+            async with timeout(60):
                 while True:
                     resp = await bot.receive_mutiply_resp()
                     if resp is not None:
                         text = resp.text
-                        if text in [
-                            role.roleId for role in binding_list_data.list[0].bindingList[0].roles
-                        ]:
+                        if text in [role.roleId for role in binding_list_data.list[0].bindingList[0].roles]:
                             uid = text
                             break
                         else:
@@ -134,7 +133,7 @@ async def on_beyond_scan_login(bot: Bot, ev: Event):
     ]
     await bot.send(msgs)
     try:
-        async with asyncio.timeout(60):
+        async with timeout(60):
             while True:
                 resp = await bot.receive_mutiply_resp()
                 if resp is not None:
