@@ -5,7 +5,7 @@ from gsuid_core.models import Event
 from gsuid_core.subscribe import Subscribe
 from gsuid_core.sv import SV
 
-from BeyondUID.utils.database.models import BeyondUser
+from BeyondUID.utils.database.models import BeyondBind
 from BeyondUID.utils.error_reply import UID_HINT
 from BeyondUID.utils.error_reply import prefix as P
 
@@ -24,16 +24,11 @@ async def open_switch_func(bot: Bot, ev: Event):
     config_name = ev.text
 
     if config_name not in PRIV_MAP:
-        return await bot.send(
-            f"🔨 [beyond]\n❌ 请输入正确的功能名称...\n🚩 例如: {P}开启自动签到"
-        )
+        return await bot.send(f"[beyond]\n❌ 请输入正确的功能名称...\n🚩 例如: {P}开启自动签到")
 
-    logger.info(f"[beyond] [{user_id}]尝试[{ev.command[2:]}]了[{ev.text}]功能")
+    logger.info(f"[beyond] [{user_id}]尝试[{ev.command[:2]}]了[{ev.text}]功能")
 
-    beyond_user = await BeyondUser.get_uid_and_platform_roleid_by_game(bot.bot_id, ev.user_id)
-    if beyond_user is None:
-        return await bot.send(UID_HINT)
-    _, platform_roleid = beyond_user
+    platform_roleid = await BeyondBind.get_uid_by_game(ev.user_id, ev.bot_id)
     if platform_roleid is None:
         return await bot.send(UID_HINT)
     logger.info(f"[beyond] [{user_id}] 角色ID为[{platform_roleid}]")
@@ -41,7 +36,7 @@ async def open_switch_func(bot: Bot, ev: Event):
     c_name = f"[beyond] {config_name}"
 
     if "开启" in ev.command:
-        im = f"🔨 [beyond]\n✅ 已为[PlatformRoleID{platform_roleid}]开启{config_name}功能。"
+        im = f"[beyond]已为[PlatformRoleID{platform_roleid}]开启{config_name}功能。"
 
         if PRIV_MAP[config_name] is None and await gs_subscribe.get_subscribe(
             c_name, uid=platform_roleid
@@ -82,11 +77,11 @@ async def open_switch_func(bot: Bot, ev: Event):
                 ev,
                 uid=platform_roleid,
             )
-            im = f"🔨 [beyond]\n✅ 已为[PlatformRoleID{platform_roleid}]关闭{config_name}功能。"
+            im = f"[beyond]已为[PlatformRoleID{platform_roleid}]关闭{config_name}功能。"
         else:
             im = (
-                f"🔨 [beyond]\n"
-                f"❌ 未找到[PlatformRoleID{platform_roleid}]的{config_name}功能配置, "
+                f"[beyond]\n"
+                f"未找到[PlatformRoleID{platform_roleid}]的{config_name}功能配置, "
                 f"该功能可能未开启。"
             )
 
