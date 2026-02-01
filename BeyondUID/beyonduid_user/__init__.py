@@ -121,7 +121,13 @@ async def on_beyond_scan_login(bot: Bot, ev: Event):
             await bot.send("指定UID超时，登录流程终止。")
             return
     uid: str = binding_list_data.list[0].bindingList[0].uid
-    platform_roleid = binding_list_data.list[0].bindingList[0].roles[0].roleId
+    roles = binding_list_data.list[0].bindingList[0].roles
+    if len(roles) == 1:
+        platform_roleid = roles[0].roleId
+    else:
+        logger.error("Multiple roles found but no UID specified.")
+        logger.error(binding_list_data)
+        return await bot.send("发生未知错误，登录流程终止。")
 
     # 二次确认绑定
     msgs = [
