@@ -23,7 +23,7 @@ from BeyondUID.utils.database.models import BeyondBind, BeyondUser
 beyond_scan_login = SV("扫码登录")
 
 
-@beyond_scan_login.on_command("扫码登录")
+@beyond_scan_login.on_command(("扫码登录", "扫码登陆"))
 async def on_beyond_scan_login(bot: Bot, ev: Event):
     device_uuid = str(uuid.uuid4()).replace("-", "")
     device = HypergryphDeviceWindows(

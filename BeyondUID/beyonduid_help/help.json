@@ -1,0 +1,125 @@
+{
+  "森空岛登录": {
+    "desc": "在执行查询之前请森空岛登录",
+    "data": [
+      {
+        "name": "扫码登录",
+        "desc": "用森空岛扫二维码登录",
+        "eg": "扫码登录",
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
+      }
+    ]
+  }, 
+  "信息查询": {
+    "desc": "信息查询功能",
+    "data": [
+      {
+        "name": "刷新抽卡记录",
+        "desc": "先刷新抽卡记录",
+        "eg": "刷新抽卡记录",
+        "need_ck": true,
+        "need_sk": false,
+        "need_admin": false
+      },
+      {
+        "name": "抽卡记录",
+        "desc": "查询抽卡记录",
+        "eg": "抽卡记录",
+        "need_ck": true,
+        "need_sk": false,
+        "need_admin": false
+      }
+    ]
+  },
+  "签到服务": {
+    "desc": "该配置项仅针对个人使用",
+    "data": [
+      {
+        "name": "签到",
+        "desc": "签到",
+        "eg": "签到",
+        "need_ck": true,
+        "need_sk": false,
+        "need_admin": false
+      }
+    ]
+  },
+  "群管理员功能": {
+    "pm": 3,
+    "desc": "群订阅服务功能",
+    "data": [
+      {
+        "name": "订阅公告",
+        "desc": "订阅公告",
+        "eg": "订阅公告",
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": true
+      },
+      {
+        "name": "取消订阅公告",
+        "desc": "取消订阅公告",
+        "eg": "取消订阅公告",
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": true
+      }
+    ]
+  },
+  "bot主人功能": {
+    "pm": 1,
+    "desc": "bot主人功能",
+    "data": [
+      {
+        "name": "全部重新签到",
+        "desc": "全部重新签到所有人",
+        "eg": "全部重新签到",
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": true
+      },
+      {
+        "name": "下载全部资源",
+        "desc": "下载全部资源",
+        "eg": "下载全部资源",
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": true
+      },
+      {
+        "name": "订阅版本更新",
+        "desc": "订阅版本更新",
+        "eg": "订阅版本更新",
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": true
+      },
+      {
+        "name": "取消订阅版本更新",
+        "desc": "取消订阅版本更新",
+        "eg": "取消订阅版本更新",
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": true
+      },
+      {
+        "name": "订阅列表",
+        "desc": "查看当前群组的订阅状态",
+        "eg": "订阅列表",
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": true
+      },
+      {
+        "name": "查看订阅状态",
+        "desc": "查看当前群组的订阅状态",
+        "eg": "查看订阅状态",
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": true
+      }
+    ]
+  }
+}
