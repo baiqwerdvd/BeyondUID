@@ -1,9 +1,7 @@
-from enum import StrEnum
+from enum import Enum
 from typing import Generic, TypeVar
 
 from pydantic import BaseModel
-
-T = TypeVar("T")
 
 
 class BaseGachaRecordItem(BaseModel):
@@ -34,10 +32,14 @@ class WeaponRecordItem(BaseGachaRecordItem):
     isNew: bool
 
 
-class GachaRecordList[T: BaseGachaRecordItem](BaseModel):
+T = TypeVar("T")
+V = TypeVar("V", bound=BaseGachaRecordItem)
+
+
+class GachaRecordList(BaseModel, Generic[V]):
     """Gacha record list model."""
 
-    list: list[T]
+    list: list[V]
     hasMore: bool
 
 
@@ -47,7 +49,7 @@ class EFResponse(BaseModel, Generic[T]):
     data: T
 
 
-class CharacterGachaPoolType(StrEnum):
+class CharacterGachaPoolType(Enum):
     Special = "E_CharacterGachaPoolType_Special"
     Beginner = "E_CharacterGachaPoolType_Beginner"
     Standard = "E_CharacterGachaPoolType_Standard"

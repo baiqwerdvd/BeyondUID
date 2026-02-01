@@ -1,16 +1,16 @@
-from enum import StrEnum
+from enum import Enum
 
 from msgspec import Struct, field
 
 
-class Platform(StrEnum):
+class Platform(Enum):
     WINDOWS = "Windows"
     ANDROID = "Android"
     IOS = "iOS"
     PLAYSTATION = "PlayStation"
 
 
-class DisplayType(StrEnum):
+class DisplayType(Enum):
     PICTURE = "picture"
     RICH_TEXT = "rich_text"
 

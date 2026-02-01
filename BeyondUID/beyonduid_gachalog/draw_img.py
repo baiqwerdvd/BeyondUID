@@ -91,9 +91,7 @@ def get_pity_per_pool(
     result = {}
     for pool_id, pool_items in by_pool.items():
         # 按 gachaTs 降序，同 gachaTs 时按 seqId 降序，确保同一批十连内顺序正确
-        sorted_items = sorted(
-            pool_items, key=lambda x: (int(x.gachaTs), int(x.seqId)), reverse=True
-        )
+        sorted_items = sorted(pool_items, key=lambda x: (int(x.gachaTs), int(x.seqId)), reverse=True)
         pity = 0
         for item in sorted_items:
             if item.rarity == 6:
@@ -270,17 +268,11 @@ def _build_pool_header_layer(
     title_icon = TEXT_PATH / "A.png"
     title_img = Image.open(title_icon).convert("RGBA")
     title_draw = ImageDraw.Draw(title_img)
-    title_draw.text(
-        (100, 32), "已         抽没出6星", font=core_font(size=20), fill="black", anchor="lm"
-    )
-    title_draw.text(
-        (145, 27), f"{pity_display}", font=core_font(size=36), fill="red", anchor="mm"
-    )
+    title_draw.text((100, 32), "已         抽没出6星", font=core_font(size=20), fill="black", anchor="lm")
+    title_draw.text((145, 27), f"{pity_display}", font=core_font(size=36), fill="red", anchor="mm")
     # 当前UP角色ICON
     up_icon = (
-        Image.open(charremoteicon700_path / "icon_chr_0022_bounda.png")
-        .convert("RGBA")
-        .resize((104, 97))
+        Image.open(charremoteicon700_path / "icon_chr_0022_bounda.png").convert("RGBA").resize((104, 97))
     )
     title_img.paste(up_icon, (-10, -6), mask=up_icon)
     header_layer.paste(title_img, (107, 72), mask=title_img)
@@ -359,12 +351,8 @@ def _build_pool_header_layer(
                 anchor="mm",
             )
         else:
-            layer_draw.text(
-                value_start_xy, "-", font=core_font(size=35), fill="black", anchor="mm"
-            )
-        layer_draw.text(
-            text_start_xy, "平均出率", font=core_font(size=20), fill="black", anchor="mm"
-        )
+            layer_draw.text(value_start_xy, "-", font=core_font(size=35), fill="black", anchor="mm")
+        layer_draw.text(text_start_xy, "平均出率", font=core_font(size=20), fill="black", anchor="mm")
 
         if pool_type == "limited":
             up_six_count = sum(
@@ -473,9 +461,7 @@ async def draw_gachalogs_img(uid: str, bot: Bot, ev: Event):
     pity_weapon = get_pity_per_pool(weapon_list)
     limited_items = [c for c in char_list if c.poolId.startswith("special_")]
     # 按 gachaTs 降序，同 gachaTs 时按 seqId 降序，确保同一批十连内顺序正确
-    limited_sorted = sorted(
-        limited_items, key=lambda x: (int(x.gachaTs), int(x.seqId)), reverse=True
-    )
+    limited_sorted = sorted(limited_items, key=lambda x: (int(x.gachaTs), int(x.seqId)), reverse=True)
     pity_limited = 0
     for item in limited_sorted:
         if item.rarity == 6:
@@ -545,9 +531,9 @@ async def draw_gachalogs_img(uid: str, bot: Bot, ev: Event):
     img = crop_center_img(bg4, 1200, total_h)
 
     # 唯一 title_img
-    icon_chr_0030_zhuangfy_img = Image.open(
-        charremoteicon700_path / "icon_chr_0030_zhuangfy.png"
-    ).resize((137, 137))
+    icon_chr_0030_zhuangfy_img = Image.open(charremoteicon700_path / "icon_chr_0030_zhuangfy.png").resize(
+        (137, 137)
+    )
     title_img.paste(icon_chr_0030_zhuangfy_img, (55, 413), mask=icon_chr_0030_zhuangfy_img)
     frame_fg_img = Image.open(TEXT_PATH / "frame_fg.png")
     title_img.paste(frame_fg_img, (52, 413), mask=frame_fg_img)
@@ -557,19 +543,11 @@ async def draw_gachalogs_img(uid: str, bot: Bot, ev: Event):
     role_name = ev.sender.get("nickname", "")
     title_img_draw.text((222, 458), role_name, font=core_font(36), fill="white", anchor="lm")
 
-    title_img_draw.text(
-        (906, 480), f"{total_gacha_num}", font=core_font(40), fill="white", anchor="mm"
-    )
-    title_img_draw.text(
-        (906, 514), "总抽卡数", font=core_font(size=20), fill="yellow", anchor="mm"
-    )
+    title_img_draw.text((906, 480), f"{total_gacha_num}", font=core_font(40), fill="white", anchor="mm")
+    title_img_draw.text((906, 514), "总抽卡数", font=core_font(size=20), fill="yellow", anchor="mm")
 
-    title_img_draw.text(
-        (1070, 480), f"{total_gacha_num}", font=core_font(40), fill="white", anchor="mm"
-    )
-    title_img_draw.text(
-        (1070, 514), "不歪率", font=core_font(size=20), fill="yellow", anchor="mm"
-    )
+    title_img_draw.text((1070, 480), f"{total_gacha_num}", font=core_font(40), fill="white", anchor="mm")
+    title_img_draw.text((1070, 514), "不歪率", font=core_font(size=20), fill="yellow", anchor="mm")
 
     img.paste(title_img, (0, -87), mask=title_img)
 
@@ -581,12 +559,8 @@ async def draw_gachalogs_img(uid: str, bot: Bot, ev: Event):
         nv = _data[nk]
         yellow_card = Image.open(TEXT_PATH / "yellow_card.png")
         yellow_card_draw = ImageDraw.Draw(yellow_card)
-        yellow_card_draw.text(
-            (265, 94), str(nk), font=core_font(30), fill=(68, 68, 68), anchor="rm"
-        )
-        yellow_card_draw.text(
-            (276, 87), str(nv), font=core_font(46), fill=(68, 68, 68), anchor="lm"
-        )
+        yellow_card_draw.text((265, 94), str(nk), font=core_font(30), fill=(68, 68, 68), anchor="rm")
+        yellow_card_draw.text((276, 87), str(nv), font=core_font(46), fill=(68, 68, 68), anchor="lm")
         img.paste(yellow_card, (38 + indexn * 544, 485), mask=yellow_card)
 
     current_y = 663 + ROW_GAP
@@ -641,15 +615,11 @@ async def draw_gachalogs_img(uid: str, bot: Bot, ev: Event):
             if is_char_pool:
                 item_id = item.charId
                 is_up = (UP_ITEMS.get(item.poolId) == item_id) if use_is_up else False
-                await _draw_card(
-                    img, xy, gacha_num, char_id=item_id, is_up=is_up, is_free=is_free
-                )
+                await _draw_card(img, xy, gacha_num, char_id=item_id, is_up=is_up, is_free=is_free)
             else:
                 item_id = item.weaponId
                 is_up = (UP_ITEMS.get(item.poolId) == item_id) if use_is_up else False
-                await _draw_card(
-                    img, xy, gacha_num, weapon_id=item_id, is_up=is_up, is_free=is_free
-                )
+                await _draw_card(img, xy, gacha_num, weapon_id=item_id, is_up=is_up, is_free=is_free)
         current_y += h + ROW_GAP
 
     footer_img = get_footer()

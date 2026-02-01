@@ -2,6 +2,7 @@ import asyncio
 import json
 import time
 from pathlib import Path
+from typing import TypeVar
 
 import httpx
 from gsuid_core.bot import Bot
@@ -24,6 +25,8 @@ from BeyondUID.beyonduid_gachalog.model import (
 )
 from BeyondUID.utils.database.models import BeyondUser
 from BeyondUID.utils.resource.RESOURCE_PATH import PLAYER_PATH
+
+T = TypeVar("T", bound=BaseGachaRecordItem)
 
 
 async def get_u8_token(
@@ -59,13 +62,13 @@ def load_existing_gacha_data(export_file: Path) -> GachaPoolExport | None:
         return None
 
 
-def get_max_seq_id[T: BaseGachaRecordItem](records: list[T]) -> int:
+def get_max_seq_id(records: list[T]) -> int:
     if not records:
         return 0
     return max(int(record.seqId) for record in records)
 
 
-def merge_records[T: BaseGachaRecordItem](
+def merge_records(
     existing: list[T],
     new_records: list[T],
 ) -> tuple[list[T], int]:
@@ -87,7 +90,7 @@ def merge_records[T: BaseGachaRecordItem](
     return merged, new_count
 
 
-async def fetch_record[T: BaseGachaRecordItem](
+async def fetch_record(
     url: str,
     http_client: httpx.AsyncClient,
     u8_token: str,
@@ -120,9 +123,7 @@ async def fetch_record[T: BaseGachaRecordItem](
         )
         response.raise_for_status()
 
-        gacha_record_list = (
-            EFResponse[GachaRecordList[item_type]].model_validate(response.json()).data
-        )
+        gacha_record_list = EFResponse[GachaRecordList[item_type]].model_validate(response.json()).data
 
         # 检查是否遇到已存在的记录，如果是则提前终止
         should_stop = False
@@ -133,9 +134,7 @@ async def fetch_record[T: BaseGachaRecordItem](
             records.append(record)
 
         if should_stop:
-            logger.debug(
-                f"Reached existing record at seqId {existing_max_seq_id}, stopping fetch"
-            )
+            logger.debug(f"Reached existing record at seqId {existing_max_seq_id}, stopping fetch")
             break
 
         has_more = gacha_record_list.hasMore
@@ -224,9 +223,7 @@ async def fetch_full_record(uid: str, platform_roleid: str, bot: Bot, ev: Event)
 
     # 合并记录
     merged_char_list, new_char_count = merge_records(existing_char_list, fetch_record_char)
-    merged_weapon_list, new_weapon_count = merge_records(
-        existing_weapon_list, fetch_record_weapon
-    )
+    merged_weapon_list, new_weapon_count = merge_records(existing_weapon_list, fetch_record_weapon)
 
     gacha_export = GachaPoolExport(
         info=PoolExportInfo(
