@@ -124,10 +124,13 @@ async def on_beyond_scan_login(bot: Bot, ev: Event):
     roles = binding_list_data.list[0].bindingList[0].roles
     if len(roles) == 1:
         platform_roleid = roles[0].roleId
+    elif len(roles) == 0:
+        await bot.send("扫码登录成功，但该Endfield账号UID下没有任何游戏角色。")
+        return
     else:
-        logger.error("Multiple roles found but no UID specified.")
         logger.error(binding_list_data)
-        return await bot.send("发生未知错误，登录流程终止。")
+        await bot.send("发生未知错误，请重试。")
+        return
 
     # 二次确认绑定
     msgs = [
