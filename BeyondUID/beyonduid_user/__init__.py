@@ -1,29 +1,29 @@
+import asyncio
 import io
 import uuid
-import asyncio
 
 import qrcode
-from sklandcore.platform import PlatformEnum, HypergryphDeviceWindows
-from sklandcore.constants import OAuth2AppCode
-from sklandcore.byd_client import BeyondClient
-from sklandcore.models.auth import (
-    BindingListData,
-    GrantCodeDataType1BindingAPI,
-    CheckScanLoginStatusSuccessData,
-)
-
-from gsuid_core.sv import SV
 from gsuid_core.bot import Bot
 from gsuid_core.logger import logger
 from gsuid_core.models import Event
 from gsuid_core.segment import MessageSegment
+from gsuid_core.sv import SV
 from gsuid_core.utils.image.convert import convert_img
+from sklandcore.byd_client import BeyondClient
+from sklandcore.constants import OAuth2AppCode
+from sklandcore.models.auth import (
+    BindingListData,
+    CheckScanLoginStatusSuccessData,
+    GrantCodeDataType1BindingAPI,
+)
+from sklandcore.platform import HypergryphDeviceWindows, PlatformEnum
+
 from BeyondUID.utils.database.models import BeyondBind, BeyondUser
 
 beyond_scan_login = SV("扫码登录")
 
 
-@beyond_scan_login.on_command(("扫码登录","扫码登陆"))
+@beyond_scan_login.on_command(("扫码登录", "扫码登陆"))
 async def on_beyond_scan_login(bot: Bot, ev: Event):
     device_uuid = str(uuid.uuid4()).replace("-", "")
     device = HypergryphDeviceWindows(

@@ -2,15 +2,14 @@ import textwrap
 from typing import Any
 
 from bs4 import BeautifulSoup, element
-from PIL import Image, ImageDraw
-
 from gsuid_core.logger import logger
 from gsuid_core.utils.fonts.fonts import core_font as cf
-from gsuid_core.utils.image.utils import download_pic_to_image
 from gsuid_core.utils.image.convert import convert_img
 from gsuid_core.utils.image.image_tools import get_div
+from gsuid_core.utils.image.utils import download_pic_to_image
+from PIL import Image, ImageDraw
 
-from .model import DisplayType, BulletinData
+from .model import BulletinData, DisplayType
 
 
 async def get_ann_img(data: BulletinData) -> str | bytes:

@@ -1,7 +1,6 @@
-from typing import Tuple, Union, Optional
 from pathlib import Path
 
-from PIL import Image, ImageOps, ImageDraw
+from PIL import Image, ImageDraw, ImageOps
 
 TEXT_PATH = Path(__file__).parent / "texture2d"
 ICON = Path(__file__).parent.parent.parent / "ICON.png"
@@ -44,11 +43,12 @@ COLOR_GREEN = (76, 175, 80)
 COLOR_BLUE = (30, 40, 60)
 COLOR_PURPLE = (138, 43, 226)
 
-Color = Union[str, Tuple[int, int, int], Tuple[int, int, int, int]]
+Color = str | tuple[int, int, int] | tuple[int, int, int, int]
 
 
 def get_footer():
     return Image.open(TEXT_PATH / "footer.png")
+
 
 def add_footer(
     img: Image.Image,
@@ -82,7 +82,6 @@ def get_ICON():
     return Image.open(ICON).convert("RGBA")
 
 
-
 class SmoothDrawer:
     """通用抗锯齿绘制工具"""
 
@@ -91,12 +90,12 @@ class SmoothDrawer:
 
     def rounded_rectangle(
         self,
-        xy: Union[Tuple[int, int, int, int], Tuple[int, int]],
+        xy: tuple[int, int, int, int] | tuple[int, int],
         radius: int,
-        fill: Optional[Color] = None,
-        outline: Optional[Color] = None,
+        fill: Color | None = None,
+        outline: Color | None = None,
         width: int = 0,
-        target: Optional[Image.Image] = None,
+        target: Image.Image | None = None,
     ):
         if len(xy) == 4:
             # 边界框坐标 (x0, y0, x1, y1)

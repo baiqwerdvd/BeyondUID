@@ -1,15 +1,14 @@
-from gsuid_core.sv import SV, get_plugin_available_prefix
 from gsuid_core.bot import Bot
 from gsuid_core.logger import logger
 from gsuid_core.models import Event
+from gsuid_core.sv import SV
 from gsuid_core.utils.error_reply import UID_HINT
 
-from .set_config import set_config_func
 from ..utils.database.models import BeyondBind
+from .set_config import set_config_func
 
 sv_self_config = SV("byd配置")
 
-ZMD_PREFIX = get_plugin_available_prefix("BeyondUID")
 
 # 开启 自动签到 功能
 @sv_self_config.on_prefix(("byd开启", "byd关闭"))

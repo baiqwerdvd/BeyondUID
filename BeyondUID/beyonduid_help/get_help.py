@@ -1,15 +1,13 @@
 import json
-from typing import Dict
 from pathlib import Path
 
+from gsuid_core.help.draw_new_plugin_help import get_new_help
+from gsuid_core.help.model import PluginHelp
+from gsuid_core.sv import get_plugin_available_prefix
 from PIL import Image
 
-from gsuid_core.help.model import PluginHelp
-from gsuid_core.help.draw_new_plugin_help import get_new_help
-
-from ..version import BeyondUID_version
 from ..utils.image import get_footer
-from ..beyonduid_config import ZMD_PREFIX
+from ..version import BeyondUID_version
 
 ICON = Path(__file__).parent.parent.parent / "ICON.png"
 HELP_DATA = Path(__file__).parent / "help.json"
@@ -17,9 +15,8 @@ ICON_PATH = Path(__file__).parent / "icon_path"
 TEXT_PATH = Path(__file__).parent / "texture2d"
 
 
-def get_help_data() -> Dict[str, PluginHelp]:
-    # 读取文件内容
-    with open(HELP_DATA, "r", encoding="utf-8") as file:
+def get_help_data() -> dict[str, PluginHelp]:
+    with open(HELP_DATA, encoding="utf-8") as file:
         return json.load(file)
 
 
@@ -32,7 +29,7 @@ async def get_help(pm: int):
         plugin_info={f"v{BeyondUID_version}": ""},
         plugin_icon=Image.open(ICON),
         plugin_help=plugin_help,
-        plugin_prefix=ZMD_PREFIX,
+        plugin_prefix=get_plugin_available_prefix("BeyondUID"),
         help_mode="dark",
         banner_bg=Image.open(TEXT_PATH / "banner_bg.webp"),
         banner_sub_text="完成这份合约，前往潜力无限的新热土，离开我们熟悉的家园——开拓未知的新世界。",

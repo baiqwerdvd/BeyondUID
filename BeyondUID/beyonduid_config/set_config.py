@@ -1,8 +1,8 @@
 from gsuid_core.logger import logger
 
+from ..utils.database.models import BeyondPush
 from .beyond_config import BeyondConfig
 from .config_default import CONIFG_DEFAULT
-from ..utils.database.models import BeyondPush
 
 PUSH_MAP = {
     "版本更新": "version",

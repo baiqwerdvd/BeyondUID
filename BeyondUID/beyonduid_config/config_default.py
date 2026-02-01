@@ -1,7 +1,7 @@
 from gsuid_core.utils.plugins_config.models import (
     GSC,
-    GsIntConfig,
     GsBoolConfig,
+    GsIntConfig,
     GsListStrConfig,
 )
 
