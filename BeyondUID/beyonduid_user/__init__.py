@@ -50,6 +50,7 @@ async def on_beyond_scan_login(bot: Bot, ev: Event):
     await bot.send(
         [
             MessageSegment.at(ev.user_id),
+            MessageSegment.text("\n"),
             MessageSegment.text("请使用以下应用扫码登录：\n" + " ".join(app_names)),
             MessageSegment.image(await convert_img(data.getvalue())),
         ],
@@ -121,11 +122,21 @@ async def on_beyond_scan_login(bot: Bot, ev: Event):
             await bot.send("指定UID超时，登录流程终止。")
             return
     uid: str = binding_list_data.list[0].bindingList[0].uid
-    platform_roleid = binding_list_data.list[0].bindingList[0].roles[0].roleId
+    roles = binding_list_data.list[0].bindingList[0].roles
+    if len(roles) == 1:
+        platform_roleid = roles[0].roleId
+    elif len(roles) == 0:
+        await bot.send("扫码登录成功，但该Endfield账号UID下没有任何游戏角色。")
+        return
+    else:
+        logger.error(binding_list_data)
+        await bot.send("发生未知错误，请重试。")
+        return
 
     # 二次确认绑定
     msgs = [
         MessageSegment.at(ev.user_id),
+        MessageSegment.text("\n"),
         MessageSegment.text("请确认绑定信息：\n"),
         MessageSegment.text(f"Endfield账号UID：{uid}\n"),
         MessageSegment.text(f"角色ID：{platform_roleid}\n"),
