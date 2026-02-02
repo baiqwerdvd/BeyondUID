@@ -1,7 +1,7 @@
 import asyncio
 import io
+import sys
 import uuid
-from asyncio.timeouts import timeout
 
 import qrcode
 from gsuid_core.bot import Bot
@@ -20,6 +20,11 @@ from sklandcore.models.auth import (
 from sklandcore.platform import HypergryphDeviceWindows, PlatformEnum
 
 from BeyondUID.utils.database.models import BeyondBind, BeyondUser
+
+if sys.version_info >= (3, 11):
+    from asyncio import timeout
+else:
+    from async_timeout import timeout
 
 beyond_scan_login = SV("扫码登录")
 

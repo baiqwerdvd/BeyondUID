@@ -12,6 +12,7 @@ dependencies = [
   "cryptography>=46.0.3",
   "sklandcore>=0.0.2",
   "qrcode>=8.2.0",
+  "async-timeout>=5.0.1; python_version == '3.10'",
 ]
 requires-python = ">=3.10,<4.0"
 readme = "README.md"

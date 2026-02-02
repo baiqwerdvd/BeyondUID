@@ -354,7 +354,9 @@ class NotificationManager:
             if not NotificationManager.has_any_update(result):
                 continue
 
-            platform_name = "Windows 端" if result.platform == Platform.DEFAULT else f"{result.platform} 端"
+            platform_name = (
+                "Windows 端" if result.platform == Platform.DEFAULT else f"{result.platform.value} 端"
+            )
 
             platform_updates = NotificationManager._build_single_update_content(result)
 
