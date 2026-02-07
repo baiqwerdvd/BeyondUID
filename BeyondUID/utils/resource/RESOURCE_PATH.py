@@ -10,7 +10,8 @@ CONFIG_PATH = MAIN_PATH / "config.json"
 
 # 游戏素材
 RESOURCE_PATH = MAIN_PATH / "resource"
-GAMEDATA_PATH = RESOURCE_PATH / "gamedata"
+TABLE_CFG_PATH = MAIN_PATH / "TableCfg"
+
 charremoteicon700_path = RESOURCE_PATH / "charremoteicon700"
 charicon_path = RESOURCE_PATH / "charicon"
 itemiconbig_path = RESOURCE_PATH / "itemiconbig"
@@ -23,7 +24,7 @@ def init_dir():
         MAIN_PATH,
         CU_BG_PATH,
         RESOURCE_PATH,
-        GAMEDATA_PATH,
+        TABLE_CFG_PATH,
     ]:
         i.mkdir(parents=True, exist_ok=True)
 

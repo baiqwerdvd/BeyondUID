@@ -20,6 +20,7 @@ from BeyondUID.utils.resource.RESOURCE_PATH import (
     itemiconbig_path,
 )
 
+from ..beyonduid_gamedata import TableCfg
 from ..utils.image import get_footer
 
 CARD_W = 175
@@ -30,11 +31,17 @@ ROW_GAP = 10
 
 TEXT_PATH = Path(__file__).parent / "texture2d"
 
-# 各池 UP：pool_id -> charId 或 weaponId（限定池为角色，武器池为武器）
-UP_ITEMS = {
-    "special_1_0_1": "chr_0016_laevat",
-    "weponbox_1_0_1": "wpn_sword_0006",
-}
+
+def _build_pool_up_map() -> dict[str, list[str]]:
+    """从 TableCfg 构建 pool_id -> [up_item_id, ...] 映射"""
+    result: dict[str, list[str]] = {}
+    for pool_id, pool_data in TableCfg.GachaCharPoolTable().items():
+        if pool_data.upCharIds:
+            result[pool_id] = pool_data.upCharIds
+    for pool_id, pool_data in TableCfg.GachaWeaponPoolTable().items():
+        if pool_data.upWeaponIds:
+            result[pool_id] = pool_data.upWeaponIds
+    return result
 
 
 class BaseGachaRecordItem(BaseModel):
@@ -198,6 +205,7 @@ async def _draw_card(
 def _build_pool_header_layer(
     *,
     pity_display: int,
+    up_map: dict[str, list[str]],
     pool_type: str | None = None,
     pool_char_list: list[CharRecordItem] | None = None,
     char_stats: dict[str, int] | None = None,
@@ -222,7 +230,8 @@ def _build_pool_header_layer(
         rep_char_id: str | None = None
         if pool_type == "limited" and pool_char_list:
             pool_id = pool_char_list[0].poolId if pool_char_list else ""
-            rep_char_id = UP_ITEMS.get(pool_id)
+            up_ids = up_map.get(pool_id, [])
+            rep_char_id = up_ids[0] if up_ids else None
         if not rep_char_id and pool_char_list:
             six_star = sorted(
                 [c for c in pool_char_list if c.rarity == 6],
@@ -241,7 +250,8 @@ def _build_pool_header_layer(
         rep_weapon_id: str | None = None
         if weapon_list:
             pool_id = weapon_list[0].poolId if weapon_list else ""
-            rep_weapon_id = UP_ITEMS.get(pool_id)
+            up_ids = up_map.get(pool_id, [])
+            rep_weapon_id = up_ids[0] if up_ids else None
         if not rep_weapon_id and weapon_list:
             six_star = sorted(
                 [w for w in weapon_list if w.rarity == 6],
@@ -360,7 +370,7 @@ def _build_pool_header_layer(
                 for item in gacha_export.charList
                 if item.poolId.startswith("special_")
                 and item.rarity == 6
-                and UP_ITEMS.get(item.poolId) == item.charId
+                and item.charId in up_map.get(item.poolId, [])
             )
             if up_six_count > 0 and non_free_n > 0:
                 avg_up = non_free_n / up_six_count
@@ -453,6 +463,8 @@ async def draw_gachalogs_img(uid: str, bot: Bot, ev: Event):
             f"绑定的 UID 为 {uid}，抽卡记录 UID 为 {gacha_export.info.uid}。"
         )
 
+    up_map = _build_pool_up_map()
+
     char_list = gacha_export.charList
     weapon_list = gacha_export.weaponList
     total_gacha_num = len(char_list) + len(weapon_list)
@@ -482,6 +494,7 @@ async def draw_gachalogs_img(uid: str, bot: Bot, ev: Event):
 
     header_limited, lim_banner_h = _build_pool_header_layer(
         pity_display=pity_limited,
+        up_map=up_map,
         pool_type="limited",
         pool_char_list=limited_items,
         char_stats=limited_stats,
@@ -489,10 +502,12 @@ async def draw_gachalogs_img(uid: str, bot: Bot, ev: Event):
     )
     header_weapon, wep_banner_h = _build_pool_header_layer(
         pity_display=pity_weapon_display,
+        up_map=up_map,
         weapon_list=weapon_list,
     )
     header_standard, std_banner_h = _build_pool_header_layer(
         pity_display=pity_by_pool.get("standard", 0),
+        up_map=up_map,
         pool_type="standard",
         pool_char_list=standard_list,
         char_stats=standard_stats,
@@ -500,6 +515,7 @@ async def draw_gachalogs_img(uid: str, bot: Bot, ev: Event):
     )
     header_beginner, beg_banner_h = _build_pool_header_layer(
         pity_display=pity_by_pool.get("beginner", 0),
+        up_map=up_map,
         pool_type="beginner",
         pool_char_list=beginner_list,
         char_stats=beginner_stats,
@@ -614,11 +630,11 @@ async def draw_gachalogs_img(uid: str, bot: Bot, ev: Event):
             is_free = getattr(item, "isFree", False)
             if is_char_pool:
                 item_id = item.charId
-                is_up = (UP_ITEMS.get(item.poolId) == item_id) if use_is_up else False
+                is_up = (item_id in up_map.get(item.poolId, [])) if use_is_up else False
                 await _draw_card(img, xy, gacha_num, char_id=item_id, is_up=is_up, is_free=is_free)
             else:
                 item_id = item.weaponId
-                is_up = (UP_ITEMS.get(item.poolId) == item_id) if use_is_up else False
+                is_up = (item_id in up_map.get(item.poolId, [])) if use_is_up else False
                 await _draw_card(img, xy, gacha_num, weapon_id=item_id, is_up=is_up, is_free=is_free)
         current_y += h + ROW_GAP
 
