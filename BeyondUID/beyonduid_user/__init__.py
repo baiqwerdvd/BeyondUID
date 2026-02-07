@@ -19,7 +19,7 @@ from sklandcore.models.auth import (
 )
 from sklandcore.platform import HypergryphDeviceWindows, PlatformEnum
 
-from BeyondUID.utils.database.models import BeyondBind, BeyondUser
+from ..utils.database.models import BeyondBind, BeyondUser
 
 if sys.version_info >= (3, 11):
     from asyncio import timeout

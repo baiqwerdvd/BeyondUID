@@ -11,8 +11,8 @@ from sklandcore.models.auth import HypergryphTokenData
 from sklandcore.signature import get_web_signed_headers
 from sklandcore.skd_client import SklandClient
 
-from BeyondUID.utils.database.models import BeyondUser
-from BeyondUID.utils.error_reply import UID_HINT
+from ..utils.database.models import BeyondUser
+from ..utils.error_reply import UID_HINT
 
 from .model import (
     EndfieldAttendanceInfoResponse,

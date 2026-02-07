@@ -5,9 +5,9 @@ from gsuid_core.models import Event
 from gsuid_core.subscribe import Subscribe
 from gsuid_core.sv import SV
 
-from BeyondUID.utils.database.models import BeyondBind
-from BeyondUID.utils.error_reply import UID_HINT
-from BeyondUID.utils.error_reply import prefix as P
+from ..utils.database.models import BeyondBind
+from ..utils.error_reply import UID_HINT
+from ..utils.error_reply import prefix as P
 
 sv_self_config = SV("byd配置")
 

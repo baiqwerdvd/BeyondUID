@@ -1,7 +1,7 @@
 from gsuid_core.logger import logger
 from gsuid_core.server import on_core_start
 
-from BeyondUID.beyonduid_resource import startup
+from ..beyonduid_resource import startup
 
 
 @on_core_start

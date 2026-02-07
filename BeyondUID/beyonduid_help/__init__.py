@@ -4,8 +4,7 @@ from gsuid_core.models import Event
 from gsuid_core.sv import SV
 from PIL import Image
 
-from BeyondUID.utils.error_reply import prefix as P
-
+from ..utils.error_reply import prefix as P
 from .get_help import ICON, get_help
 
 sv_dna_help = SV("byd帮助")

@@ -13,7 +13,7 @@ from gsuid_core.utils.image.image_tools import core_font, crop_center_img
 from PIL import Image, ImageDraw
 from pydantic import BaseModel
 
-from BeyondUID.utils.resource.RESOURCE_PATH import (
+from ..utils.resource.RESOURCE_PATH import (
     PLAYER_PATH,
     charicon_path,
     charremoteicon700_path,

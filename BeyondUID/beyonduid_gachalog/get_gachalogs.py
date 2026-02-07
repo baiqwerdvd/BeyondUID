@@ -13,7 +13,7 @@ from sklandcore.constants import OAuth2AppCode
 from sklandcore.models.auth import GrantCodeDataType1BindingAPI
 from sklandcore.platform import HypergryphDeviceWindows
 
-from BeyondUID.beyonduid_gachalog.model import (
+from ..beyonduid_gachalog.model import (
     BaseGachaRecordItem,
     CharacterGachaPoolType,
     CharRecordItem,
@@ -23,8 +23,8 @@ from BeyondUID.beyonduid_gachalog.model import (
     PoolExportInfo,
     WeaponRecordItem,
 )
-from BeyondUID.utils.database.models import BeyondUser
-from BeyondUID.utils.resource.RESOURCE_PATH import PLAYER_PATH
+from ..utils.database.models import BeyondUser
+from ..utils.resource.RESOURCE_PATH import PLAYER_PATH
 
 T = TypeVar("T", bound=BaseGachaRecordItem)
 

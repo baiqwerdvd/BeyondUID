@@ -1,6 +1,6 @@
 {
   "森空岛登录": {
-    "desc": "在执行查询之前请森空岛登录",
+    "desc": "在执行查询之前请扫码登录",
     "data": [
       {
         "name": "扫码登录",
@@ -12,8 +12,8 @@
       }
     ]
   }, 
-  "信息查询": {
-    "desc": "信息查询功能",
+  "抽卡相关查询": {
+    "desc": "抽卡相关查询功能",
     "data": [
       {
         "name": "刷新抽卡记录",
@@ -33,6 +33,27 @@
       }
     ]
   },
+  "信息查询": {
+    "desc": "信息查询功能",
+    "data": [
+      {
+        "name": "每日/mr",
+        "desc": "查询每日/mr信息",
+        "eg": "每日",
+        "need_ck": true,
+        "need_sk": false,
+        "need_admin": false
+      },
+      {
+        "name": "查询/卡片",
+        "desc": "查询卡片信息",
+        "eg": "卡片",
+        "need_ck": true,
+        "need_sk": false,
+        "need_admin": false
+      }
+    ]
+  },
   "签到服务": {
     "desc": "该配置项仅针对个人使用",
     "data": [
@@ -40,6 +61,14 @@
         "name": "签到",
         "desc": "签到",
         "eg": "签到",
+        "need_ck": true,
+        "need_sk": false,
+        "need_admin": false
+      },
+      {
+        "name": "自动签到",
+        "desc": "自动签到",
+        "eg": "开启/关闭自动签到",
         "need_ck": true,
         "need_sk": false,
         "need_admin": false

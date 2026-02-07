@@ -4,9 +4,9 @@
 # from gsuid_core.subscribe import Subscribe, gs_subscribe
 # from gsuid_core.sv import SV
 
-# from BeyondUID.utils.database.models import BeyondPush, BeyondUser
-# from BeyondUID.utils.error_reply import UID_HINT
-# from BeyondUID.utils.error_reply import prefix as P
+# from ..utils.database.models import BeyondPush, BeyondUser
+# from ..utils.error_reply import UID_HINT
+# from ..utils.error_reply import prefix as P
 
 # from .beyond_config import BeyondConfig
 # from .config_default import CONIFG_DEFAULT

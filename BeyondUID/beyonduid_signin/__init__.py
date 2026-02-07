@@ -5,9 +5,9 @@ from gsuid_core.models import Event
 from gsuid_core.subscribe import gs_subscribe
 from gsuid_core.sv import SV
 
-from BeyondUID.beyonduid_config.beyond_config import BeyondConfig
-from BeyondUID.utils.database.models import BeyondBind
-from BeyondUID.utils.error_reply import UID_HINT
+from ..beyonduid_config.beyond_config import BeyondConfig
+from ..utils.database.models import BeyondBind
+from ..utils.error_reply import UID_HINT
 
 from .signin import sign_in
 

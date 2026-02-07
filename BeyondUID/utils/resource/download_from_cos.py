@@ -1,6 +1,6 @@
 from gsuid_core.utils.download_resource.download_core import download_all_file
 
-from BeyondUID.utils.resource.RESOURCE_PATH import (
+from .RESOURCE_PATH import (
     TABLE_CFG_PATH,
     charicon_path,
     charremoteicon700_path,

@@ -13,8 +13,7 @@ from gsuid_core.subscribe import gs_subscribe
 from gsuid_core.sv import SV
 from msgspec import convert
 
-from BeyondUID.beyonduid_config.beyond_config import BeyondConfig
-
+from ..beyonduid_config.beyond_config import BeyondConfig
 from .draw_img import get_ann_img
 from .get_data import (
     BASE_URL,

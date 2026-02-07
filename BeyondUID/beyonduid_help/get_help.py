@@ -5,8 +5,7 @@ from gsuid_core.help.draw_new_plugin_help import get_new_help
 from gsuid_core.help.model import PluginHelp
 from PIL import Image
 
-from BeyondUID.utils.error_reply import prefix as P
-
+from ..utils.error_reply import prefix as P
 from ..utils.image import get_footer
 from ..version import BeyondUID_version
 
@@ -32,14 +31,14 @@ async def get_help(pm: int):
         plugin_help=plugin_help,
         plugin_prefix=P,
         help_mode="dark",
-        banner_bg=Image.open(TEXT_PATH / "banner_bg.webp"),
+        banner_bg=Image.open(TEXT_PATH / "banner_bg.png"),
         banner_sub_text="完成这份合约，前往潜力无限的新热土，离开我们熟悉的家园——开拓未知的新世界。",
-        help_bg=Image.open(TEXT_PATH / "bg.webp"),
+        help_bg=Image.open(TEXT_PATH / "bg.jpg"),
         cag_bg=Image.open(TEXT_PATH / "cag_bg.png"),
         item_bg=Image.open(TEXT_PATH / "item.png"),
         icon_path=ICON_PATH,
         footer=get_footer(),
         enable_cache=False,
-        column=4,
+        column=3,
         pm=pm,
     )
