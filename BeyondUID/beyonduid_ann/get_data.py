@@ -61,7 +61,7 @@ async def fetch_aggregate_data(
     url = (
         f"{BASE_URL}/bulletin/v2/aggregate"
         f"?lang={LANGUAGE}&channel=1&subChannel=1&platform={platform.value}"
-        f"&type=1&code={GAME_CODE}&hideDetail=1"
+        f"&type=0&code={GAME_CODE}&hideDetail=1&server=1"
     )
 
     try:
@@ -109,41 +109,59 @@ async def process_bulletin_updates(
     new_announcements = {}
 
     for item in update_list:
-        existing_key = None
+        existing_key: str | None = None
+        existing_entry: BulletinData | None = None
+
+        # check for an existing entry in the "update" dictionary first
         for key, value in list(bulletin_aggregate.update.items()):
             if value.cid == item.cid:
-                if value.startAt == item.startAt:
-                    break
-                else:
-                    bulletin_aggregate.update.pop(key)
-                    existing_key = key
-                    break
-        else:
-            if item.cid not in bulletin_aggregate.data:
-                try:
-                    ann = await get_announcement(item.cid)
-                    if not ann:
-                        logger.warning(f"Announcement not found for CID: {item.cid}")
-                        continue
-                    bulletin_aggregate.data[item.cid] = ann
-                    new_announcements[item.cid] = ann
-                    logger.info(f"New bulletin found: {item.cid}:{item.title}")
-                except Exception as e:
-                    logger.error(f"Failed to get new announcement {item.cid}: {e}")
-                continue
+                existing_key = key
+                existing_entry = value
+                break
 
-        if existing_key:
+        # if there was no match in updates, look in the main data cache
+        if existing_entry is None:
+            existing_entry = bulletin_aggregate.data.get(item.cid)
+
+        # if we have seen this CID before, we may need to refresh it
+        if existing_entry:
             try:
-                new_key = generate_update_key(item.cid, existing_key)
                 ann = await get_announcement(item.cid)
                 if not ann:
                     logger.warning(f"Announcement not found for CID: {item.cid}")
                     continue
-                bulletin_aggregate.update[new_key] = ann
-                new_announcements[item.cid] = ann
-                logger.info(f"Updated bulletin found: {item.cid}:{item.title}")
             except Exception as e:
-                logger.error(f"Failed to get updated announcement {item.cid}: {e}")
+                logger.error(f"Failed to fetch announcement for version check {item.cid}: {e}")
+                continue
+
+            # if both timestamp and version are unchanged, nothing to do
+            if ann.startAt == existing_entry.startAt and ann.version == existing_entry.version:
+                continue
+
+            # otherwise treat it as an updated bulletin
+            if existing_key:
+                # remove the old update entry before creating a new one
+                bulletin_aggregate.update.pop(existing_key, None)
+                new_key = generate_update_key(item.cid, existing_key)
+            else:
+                new_key = generate_update_key(item.cid)
+
+            bulletin_aggregate.update[new_key] = ann
+            new_announcements[item.cid] = ann
+            logger.info(f"Updated bulletin found: {item.cid}:{item.title}")
+            continue
+
+        # not seen before at all – this is a brand‑new announcement
+        try:
+            ann = await get_announcement(item.cid)
+            if not ann:
+                logger.warning(f"Announcement not found for CID: {item.cid}")
+                continue
+            bulletin_aggregate.data[item.cid] = ann
+            new_announcements[item.cid] = ann
+            logger.info(f"New bulletin found: {item.cid}:{item.title}")
+        except Exception as e:
+            logger.error(f"Failed to get new announcement {item.cid}: {e}")
 
     return new_announcements
 
