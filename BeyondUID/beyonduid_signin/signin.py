@@ -13,7 +13,6 @@ from sklandcore.skd_client import SklandClient
 
 from ..utils.database.models import BeyondUser
 from ..utils.error_reply import UID_HINT
-
 from .model import (
     EndfieldAttendanceInfoResponse,
     EndfieldAttendanceRecordResponse,
@@ -176,19 +175,19 @@ async def sign_in(
     if not user:
         return UID_HINT
 
-    client = SklandClient("")
-    await initialize(client, user)
-    await client.login_by_token(
-        app_code=OAuth2AppCode.SKLAND,
-        account_token=HypergryphTokenData(
-            token=user.hgtoken,
-            hgId="",
-            deviceToken=user.device_token,
-        ),
-    )
-
     # 先检查今日是否已签到
     try:
+        client = SklandClient("")
+        await initialize(client, user)
+        await client.login_by_token(
+            app_code=OAuth2AppCode.SKLAND,
+            account_token=HypergryphTokenData(
+                token=user.hgtoken,
+                hgId="",
+                deviceToken=user.device_token,
+            ),
+        )
+
         attendance_info = await get_attendance_info(client)
         if attendance_info.code != 0:
             return f"{sign_title} 获取签到信息失败: {attendance_info.message}"
