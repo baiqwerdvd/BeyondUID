@@ -21,7 +21,7 @@ class TableCfg:
 
     @classmethod
     def _load_json(cls, filename: str) -> dict[str, Any]:
-        with open(TABLE_CFG_PATH / filename) as f:
+        with open(TABLE_CFG_PATH / filename, encoding='utf-8') as f:
             return json.load(f)
 
     @classmethod
