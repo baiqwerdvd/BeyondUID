@@ -194,32 +194,36 @@ async def fetch_full_record(uid: str, platform_roleid: str, bot: Bot, ev: Event)
     logger.debug(f"Existing max seqId - char: {char_max_seq_id}, weapon: {weapon_max_seq_id}")
 
     http_client = httpx.AsyncClient()
+    try:
+        # 增量拉取角色记录
+        fetch_record_char: list[CharRecordItem] = []
+        for pool_type in CharacterGachaPoolType:
+            list_records = await fetch_record(
+                "https://ef-webview.hypergryph.com/api/record/char",
+                http_client,
+                u8_token,
+                CharRecordItem,
+                {"pool_type": pool_type.value},
+                existing_max_seq_id=char_max_seq_id,
+            )
+            fetch_record_char.extend(list_records)
+            logger.debug(f"New char records fetched for pool {pool_type.value}: {len(list_records)}")
 
-    # 增量拉取角色记录
-    fetch_record_char: list[CharRecordItem] = []
-    for pool_type in CharacterGachaPoolType:
-        list_records = await fetch_record(
-            "https://ef-webview.hypergryph.com/api/record/char",
+        # 增量拉取武器记录
+        fetch_record_weapon = await fetch_record(
+            "https://ef-webview.hypergryph.com/api/record/weapon",
             http_client,
             u8_token,
-            CharRecordItem,
-            {"pool_type": pool_type.value},
-            existing_max_seq_id=char_max_seq_id,
+            WeaponRecordItem,
+            existing_max_seq_id=weapon_max_seq_id,
         )
-        fetch_record_char.extend(list_records)
-        logger.debug(f"New char records fetched for pool {pool_type.value}: {len(list_records)}")
-
-    # 增量拉取武器记录
-    fetch_record_weapon = await fetch_record(
-        "https://ef-webview.hypergryph.com/api/record/weapon",
-        http_client,
-        u8_token,
-        WeaponRecordItem,
-        existing_max_seq_id=weapon_max_seq_id,
-    )
-    logger.debug(f"New weapon records fetched: {len(fetch_record_weapon)}")
-
-    await http_client.aclose()
+        logger.debug(f"New weapon records fetched: {len(fetch_record_weapon)}")
+    except Exception as e:
+        logger.exception(e)
+        await bot.send("抽卡记录获取失败，请稍后重试或重新登陆账号再试。")
+        return
+    finally:
+        await http_client.aclose()
 
     # 合并记录
     merged_char_list, new_char_count = merge_records(existing_char_list, fetch_record_char)
