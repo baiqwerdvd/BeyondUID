@@ -25,6 +25,12 @@ class TableCfg:
             return json.load(f)
 
     @classmethod
+    def _load_raw_table(cls, cache_key: str, filename: str) -> dict[str, Any]:
+        if cache_key not in cls._cache:
+            cls._cache[cache_key] = cls._load_json(filename)
+        return cls._cache[cache_key]
+
+    @classmethod
     def GachaCharPoolTable(cls) -> dict[str, GachaCharPoolData]:
         if "GachaCharPoolTable" not in cls._cache:
             data = cls._load_json("GachaCharPoolTable.json")
@@ -41,5 +47,79 @@ class TableCfg:
         return cls._cache["GachaWeaponPoolTable"]
 
     @classmethod
+    def CharacterTable(cls) -> dict[str, dict[str, Any]]:
+        return cls._load_raw_table("CharacterTable", "CharacterTable.json")
+
+    @classmethod
+    def WeaponBasicTable(cls) -> dict[str, dict[str, Any]]:
+        return cls._load_raw_table("WeaponBasicTable", "WeaponBasicTable.json")
+
+    @classmethod
+    def ItemTable(cls) -> dict[str, dict[str, Any]]:
+        return cls._load_raw_table("ItemTable", "ItemTable.json")
+
+    @classmethod
+    def CharWpnRecommendTable(cls) -> dict[str, dict[str, Any]]:
+        return cls._load_raw_table("CharWpnRecommendTable", "CharWpnRecommendTable.json")
+
+    @classmethod
+    def CharWpnSkillRecommendTable(cls) -> dict[str, dict[str, Any]]:
+        return cls._load_raw_table("CharWpnSkillRecommendTable", "CharWpnSkillRecommendTable.json")
+
+    @classmethod
+    def GemTable(cls) -> dict[str, dict[str, Any]]:
+        return cls._load_raw_table("GemTable", "GemTable.json")
+
+    @classmethod
+    def RewardTable(cls) -> dict[str, dict[str, Any]]:
+        return cls._load_raw_table("RewardTable", "RewardTable.json")
+
+    @classmethod
+    def DomainDataTable(cls) -> dict[str, dict[str, Any]]:
+        return cls._load_raw_table("DomainDataTable", "DomainDataTable.json")
+
+    @classmethod
+    def WorldEnergyPointTable(cls) -> dict[str, dict[str, Any]]:
+        return cls._load_raw_table("WorldEnergyPointTable", "WorldEnergyPointTable.json")
+
+    @classmethod
+    def GachaPoolWeaponPresetTable(cls) -> dict[str, dict[str, Any]]:
+        return cls._load_raw_table("GachaPoolWeaponPresetTable", "GachaPoolWeaponPresetTable.json")
+
+    @classmethod
+    def GachaPoolCharPresetTable(cls) -> dict[str, dict[str, Any]]:
+        return cls._load_raw_table("GachaPoolCharPresetTable", "GachaPoolCharPresetTable.json")
+
+    @classmethod
+    def GemPresetTable(cls) -> dict[str, dict[str, Any]]:
+        return cls._load_raw_table("GemPresetTable", "GemPresetTable.json")
+
+    @classmethod
+    def WorldEnergyPointGroupTable(cls) -> dict[str, dict[str, Any]]:
+        return cls._load_raw_table("WorldEnergyPointGroupTable", "WorldEnergyPointGroupTable.json")
+
+    @classmethod
     def reload(cls) -> None:
         cls._cache.clear()
+        for cache_cls_name in ("CharacterInfoTable", "WeaponInfoTable", "WeaponGemInfoTable"):
+            cache_cls = globals().get(cache_cls_name)
+            if cache_cls is not None:
+                cache_cls.clear_cache()
+
+
+from .character_weapon_info import CharacterDetailData  # noqa: E402
+from .character_weapon_info import CharacterInfoTable, WeaponDetailData, WeaponInfoTable
+from .weapon_gem_info import WeaponGemInfoTable  # noqa: E402
+from .weapon_gem_info import WeaponGemRecommendationData
+
+__all__ = [
+    "CharacterDetailData",
+    "CharacterInfoTable",
+    "GachaCharPoolTable",
+    "GachaWeaponPoolTable",
+    "TableCfg",
+    "WeaponDetailData",
+    "WeaponGemInfoTable",
+    "WeaponGemRecommendationData",
+    "WeaponInfoTable",
+]
