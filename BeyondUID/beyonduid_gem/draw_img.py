@@ -10,6 +10,7 @@ from gsuid_core.utils.image.convert import convert_img
 from gsuid_core.utils.image.image_tools import core_font
 
 from ..beyonduid_gamedata import TableCfg, WeaponGemInfoTable
+from ..beyonduid_gamedata.i18n_text import get_i18n_text
 from ..beyonduid_gamedata.weapon_gem_info import WeaponGemEnergyPointData, WeaponGemRecommendationData
 from ..utils.image import get_footer, get_ICON
 from ..utils.resource.RESOURCE_PATH import charicon_path, itemiconbig_path
@@ -81,12 +82,7 @@ class _WeaponBestData:
 
 def _get_term_name(term_id: str) -> str:
     gem_data = TableCfg.GemTable().get(term_id, {})
-    tag_name = gem_data.get("tagName")
-    if isinstance(tag_name, dict):
-        text = tag_name.get("text")
-        if isinstance(text, str):
-            return text
-    return term_id
+    return get_i18n_text(gem_data.get("tagName")) or term_id
 
 
 def _get_bound_character_ids(weapon_id: str, limit: int = 3) -> list[str]:

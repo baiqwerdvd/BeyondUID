@@ -7,6 +7,7 @@ from gsuid_core.models import Event
 from gsuid_core.sv import SV
 
 from ..beyonduid_gamedata import TableCfg, WeaponGemInfoTable
+from ..beyonduid_gamedata.i18n_text import get_i18n_text
 from ..beyonduid_gamedata.weapon_gem_info import WeaponGemEnergyPointData, WeaponGemRecommendationData
 from ..utils.error_reply import prefix as P
 from .draw_img import draw_gem_recommend_img
@@ -29,12 +30,7 @@ class _MultiPointPlan:
 
 def _get_term_name(term_id: str) -> str:
     gem_data = TableCfg.GemTable().get(term_id, {})
-    tag_name = gem_data.get("tagName")
-    if isinstance(tag_name, dict):
-        text = tag_name.get("text")
-        if isinstance(text, str):
-            return text
-    return term_id
+    return get_i18n_text(gem_data.get("tagName")) or term_id
 
 
 def _format_point_name(point: WeaponGemEnergyPointData) -> str:

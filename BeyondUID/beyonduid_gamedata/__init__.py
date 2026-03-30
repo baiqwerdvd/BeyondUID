@@ -100,7 +100,10 @@ class TableCfg:
 
     @classmethod
     def reload(cls) -> None:
+        from .i18n_text import clear_i18n_text_cache
+
         cls._cache.clear()
+        clear_i18n_text_cache()
         for cache_cls_name in ("CharacterInfoTable", "WeaponInfoTable", "WeaponGemInfoTable"):
             cache_cls = globals().get(cache_cls_name)
             if cache_cls is not None:
