@@ -6,23 +6,14 @@ from pydantic import BaseModel, Field
 
 from . import TableCfg
 from .character_weapon_info import WeaponDetailData, WeaponInfoTable
-
-
-def _get_i18n_text(value: Any) -> str:
-    if isinstance(value, dict):
-        text = value.get("text")
-        if isinstance(text, str):
-            return text.strip()
-    if isinstance(value, str):
-        return value.strip()
-    return ""
+from .i18n_text import get_i18n_text
 
 
 def _item_name(item_id: str) -> str:
     if not item_id:
         return ""
     item_data = TableCfg.ItemTable().get(item_id, {})
-    return _get_i18n_text(item_data.get("name"))
+    return get_i18n_text(item_data.get("name"))
 
 
 class GemTermData(BaseModel):
@@ -95,8 +86,8 @@ class WeaponGemInfoTable:
         gem_data = TableCfg.GemTable().get(term_id, {})
         return GemTermData(
             term_id=term_id,
-            term_name=_get_i18n_text(gem_data.get("tagName")),
-            term_desc=_get_i18n_text(gem_data.get("tagDesc")),
+            term_name=get_i18n_text(gem_data.get("tagName")),
+            term_desc=get_i18n_text(gem_data.get("tagDesc")),
             term_type=gem_data.get("termType", "") or "",
             level=level,
         )
@@ -140,11 +131,11 @@ class WeaponGemInfoTable:
 
         result = WeaponGemEnergyPointData(
             point_id=point_id,
-            point_name=_get_i18n_text(point_data.get("gameName")),
+            point_name=get_i18n_text(point_data.get("gameName")),
             game_group_id=game_group_id,
             reward_id=point_data.get("rewardId", "") or "",
             domain_id=domain_id,
-            domain_name=_get_i18n_text(domain_data.get("domainName")),
+            domain_name=get_i18n_text(domain_data.get("domainName")),
             level_id=level_id,
             recommend_lv=int(point_data.get("recommendLv", 0) or 0),
             world_level=int(point_data.get("worldLevel", 0) or 0),
@@ -165,7 +156,7 @@ class WeaponGemInfoTable:
     def _iter_energy_points(cls) -> list[WeaponGemEnergyPointData]:
         result: list[WeaponGemEnergyPointData] = []
         for point_id, point_data in TableCfg.WorldEnergyPointTable().items():
-            point_name = _get_i18n_text(point_data.get("gameName"))
+            point_name = get_i18n_text(point_data.get("gameName"))
             if not point_name.startswith("重度能量淤积点·"):
                 continue
             result.append(cls._build_energy_point_data(point_id, point_data))

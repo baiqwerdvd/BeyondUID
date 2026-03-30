@@ -4,16 +4,7 @@ from typing import Any, ClassVar
 from pydantic import BaseModel, Field
 
 from . import TableCfg
-
-
-def _get_i18n_text(value: Any) -> str:
-    if isinstance(value, dict):
-        text = value.get("text")
-        if isinstance(text, str):
-            return text.strip()
-    if isinstance(value, str):
-        return value.strip()
-    return ""
+from .i18n_text import get_i18n_text
 
 
 def _normalize_query(value: str) -> str:
@@ -123,8 +114,8 @@ class CharacterInfoTable(BaseEntityInfoTable):
                     char_id,
                     _collect_search_names(
                         char_id,
-                        _get_i18n_text(data.get("name")),
-                        data.get("engName", ""),
+                        get_i18n_text(data.get("name")),
+                        get_i18n_text(data.get("engName")),
                         data.get("phoneticName", ""),
                     ),
                 )
@@ -153,8 +144,8 @@ class CharacterInfoTable(BaseEntityInfoTable):
 
         detail = CharacterDetailData(
             id=entity_id,
-            name=_get_i18n_text(data.get("name")),
-            eng_name=data.get("engName", "") or "",
+            name=get_i18n_text(data.get("name")),
+            eng_name=get_i18n_text(data.get("engName")),
             phonetic_name=data.get("phoneticName", "") or "",
             profession=data.get("profession", "") or "",
             rarity=int(data.get("rarity", 0) or 0),
@@ -184,8 +175,8 @@ class WeaponInfoTable(BaseEntityInfoTable):
                     weapon_id,
                     _collect_search_names(
                         weapon_id,
-                        _get_i18n_text(item_data.get("name")),
-                        _get_i18n_text(data.get("engName")),
+                        get_i18n_text(item_data.get("name")),
+                        get_i18n_text(data.get("engName")),
                     ),
                 )
             )
@@ -203,13 +194,13 @@ class WeaponInfoTable(BaseEntityInfoTable):
 
         detail = WeaponDetailData(
             id=entity_id,
-            name=_get_i18n_text((item_data or {}).get("name")),
-            eng_name=_get_i18n_text((weapon_data or {}).get("engName")),
+            name=get_i18n_text((item_data or {}).get("name")),
+            eng_name=get_i18n_text((weapon_data or {}).get("engName")),
             weapon_type=(weapon_data or {}).get("weaponType", "") or "",
             rarity=int(((item_data or {}).get("rarity")) or ((weapon_data or {}).get("rarity")) or 0),
             max_lv=int((weapon_data or {}).get("maxLv", 0) or 0),
-            desc=_get_i18n_text((item_data or {}).get("desc")),
-            weapon_desc=_get_i18n_text((weapon_data or {}).get("weaponDesc")),
+            desc=get_i18n_text((item_data or {}).get("desc")),
+            weapon_desc=get_i18n_text((weapon_data or {}).get("weaponDesc")),
             skill_list=(weapon_data or {}).get("weaponSkillList", []) or [],
             raw_data={
                 "weapon_basic": weapon_data or {},
