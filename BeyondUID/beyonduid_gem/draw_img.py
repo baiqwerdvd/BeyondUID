@@ -192,6 +192,30 @@ def _has_remaining_desired_terms_in_point(
     return bool(desired_term_ids.intersection(point_term_ids))
 
 
+def _is_weapon_fully_supported_by_plan(
+    data: WeaponGemRecommendationData,
+    plan: _MultiPointPlan,
+) -> bool:
+    if not _is_weapon_covered_by_plan(data, plan):
+        return False
+
+    desired_term_ids = set(data.recommended_secondary_term_ids + data.recommended_skill_term_ids)
+    if plan.locked_lock_term_id:
+        desired_term_ids.discard(plan.locked_lock_term_id)
+    if not desired_term_ids:
+        return True
+
+    point_term_ids = set(plan.point.guaranteed_secondary_term_ids + plan.point.guaranteed_skill_term_ids)
+    return bool(desired_term_ids.intersection(point_term_ids))
+
+
+def _is_full_input_plan(
+    plan: _MultiPointPlan,
+    data_list: list[WeaponGemRecommendationData],
+) -> bool:
+    return all(_is_weapon_fully_supported_by_plan(data, plan) for data in data_list)
+
+
 def _build_multi_point_plan(
     point: WeaponGemEnergyPointData,
     lock_data_list: list[WeaponGemRecommendationData],
@@ -250,7 +274,7 @@ def _select_multi_point_plans(data_list: list[WeaponGemRecommendationData]) -> l
         for subset_size in range(len(data_list), 0, -1):
             for subset in combinations(data_list, subset_size):
                 plan = _build_multi_point_plan(point, list(subset), data_list, point_ranks[point_key])
-                if not plan.lock_covered_weapon_names and not plan.covered_weapon_names:
+                if not plan.lock_covered_weapon_names:
                     continue
                 plans.append(plan)
 
@@ -273,7 +297,7 @@ def _select_multi_point_plans(data_list: list[WeaponGemRecommendationData]) -> l
     for plan in plans:
         plan_key = (
             plan.point.point_id,
-            tuple(sorted(plan.lock_covered_weapon_names or plan.covered_weapon_names)),
+            tuple(sorted(plan.lock_covered_weapon_names)),
             tuple(sorted(plan.locked_primary_ids)),
             plan.locked_lock_term_id,
         )
@@ -286,11 +310,20 @@ def _select_multi_point_plans(data_list: list[WeaponGemRecommendationData]) -> l
 
 def _select_display_plans(
     plans: list[_MultiPointPlan],
-    weapon_names: list[str],
+    data_list: list[WeaponGemRecommendationData],
 ) -> list[_MultiPointPlan]:
-    _ = weapon_names
     if not plans:
         return []
+
+    full_input_plans = [plan for plan in plans if _is_full_input_plan(plan, data_list)]
+    if full_input_plans:
+        return full_input_plans[:MAX_PLAN_COUNT]
+
+    weapon_names = {data.weapon.name for data in data_list}
+    fully_covered_plans = [plan for plan in plans if set(plan.lock_covered_weapon_names) == weapon_names]
+    if fully_covered_plans:
+        return fully_covered_plans[:MAX_PLAN_COUNT]
+
     return plans[:MAX_PLAN_COUNT]
 
 
@@ -903,12 +936,15 @@ async def draw_gem_recommend_img(
     not_found: list[str] | None = None,
 ) -> bytes | str:
     plans = _select_multi_point_plans(data_list)
-    display_plans = _select_display_plans(plans, [data.weapon.name for data in data_list])
+    display_plans = _select_display_plans(plans, data_list)
     plan_render_list = [
         _build_plan_render_data(plan, [data.weapon.name for data in data_list], data_list, index)
         for index, plan in enumerate(display_plans, start=1)
     ]
-    best_list = _build_best_weapon_data(data_list, plans[0] if plans else None)
+    best_list = _build_best_weapon_data(
+        data_list,
+        display_plans[0] if display_plans else (plans[0] if plans else None),
+    )
 
     weapon_area_h = _calc_weapon_area_height(len(data_list))
     temp_img = Image.new("RGBA", (IMG_W, 5000), BG_COLOR)
