@@ -1,4 +1,11 @@
+import asyncio
+import sys
 from typing import Literal
+
+if sys.version_info >= (3, 11):
+    from asyncio import timeout
+else:
+    from async_timeout import timeout
 
 import httpx
 from pydantic import BaseModel
@@ -21,6 +28,8 @@ from ..utils.database.models import BeyondBind, BeyondUser
 from ..utils.error_reply import UID_HINT
 
 ENDFIELD_POSITION_URL = "https://zonai.skland.com/web/v1/game/endfield/map/me/position"
+ENDFIELD_POSITION_AGREE_POLICY_URL = "https://zonai.skland.com/web/v1/game/endfield/map/agree-policy"
+POSITION_POLICY_RETRY_MESSAGE = "请同意获取角色位置的相关政策后重试"
 
 sv_position = SV("终末地位置")
 
@@ -43,6 +52,12 @@ class EndfieldPositionResponse(BaseModel):
     message: str
     timestamp: str
     data: EndfieldPositionData | None = None
+
+
+class EndfieldCommonResponse(BaseModel):
+    code: int
+    message: str
+    timestamp: str
 
 
 def _resolve_table_name(table_row: dict[str, object] | None) -> str:
@@ -108,6 +123,10 @@ def _get_web_headers(
     )
 
 
+def need_agree_position_policy(position_resp: EndfieldPositionResponse) -> bool:
+    return position_resp.code != 0 and POSITION_POLICY_RETRY_MESSAGE in position_resp.message
+
+
 async def get_position_info(
     client: SklandClient,
     role_id: str,
@@ -127,6 +146,44 @@ async def get_position_info(
     response = await client._http.get(url, headers=headers)
     response.raise_for_status()
     return EndfieldPositionResponse.model_validate_json(response.content)
+
+
+async def agree_position_policy(
+    client: SklandClient,
+    role_id: str,
+    server_id: str = "1",
+) -> EndfieldCommonResponse:
+    query = f"roleId={role_id}&serverId={server_id}"
+    url = f"{ENDFIELD_POSITION_AGREE_POLICY_URL}?{query}"
+    headers = _get_web_headers(
+        url=url,
+        method="GET",
+        body=None,
+        sign_token=client._token,
+        cred=client._cred,
+        device_id=client._device_id,
+    )
+
+    response = await client._http.get(url, headers=headers)
+    response.raise_for_status()
+    return EndfieldCommonResponse.model_validate_json(response.content)
+
+
+async def _confirm_agree_position_policy(bot: Bot) -> bool | None:
+    await bot.send("检测到需要同意获取角色位置的相关政策。\n" "回复“确认”以同意并继续查询，回复“取消”以终止。")
+    try:
+        async with timeout(60):
+            while True:
+                resp = await bot.receive_mutiply_resp()
+                if resp is None:
+                    continue
+                text = resp.text.strip()
+                if text == "确认":
+                    return True
+                if text == "取消":
+                    return False
+    except asyncio.TimeoutError:
+        return None
 
 
 def format_position_message(position_resp: EndfieldPositionResponse) -> str:
@@ -156,6 +213,7 @@ def format_position_message(position_resp: EndfieldPositionResponse) -> str:
 async def get_endfield_position(
     platform_roleid: str,
     server_id: str = "1",
+    bot: Bot | None = None,
 ) -> str:
     position_title = "[endfield] [位置]"
     logger.info(f"{position_title} {platform_roleid} 开始获取位置")
@@ -181,6 +239,30 @@ async def get_endfield_position(
             role_id=platform_roleid,
             server_id=server_id,
         )
+        if need_agree_position_policy(position_resp):
+            if bot is None:
+                return f"{position_title} {position_resp.message}"
+
+            confirm_result = await _confirm_agree_position_policy(bot)
+            if confirm_result is None:
+                return f"{position_title} 确认超时，已取消位置查询。"
+            if not confirm_result:
+                return f"{position_title} 已取消位置查询。"
+
+            agree_resp = await agree_position_policy(
+                client=client,
+                role_id=platform_roleid,
+                server_id=server_id,
+            )
+            if agree_resp.code != 0:
+                return f"{position_title} 同意政策失败: {agree_resp.message}"
+
+            position_resp = await get_position_info(
+                client=client,
+                role_id=platform_roleid,
+                server_id=server_id,
+            )
+
         return format_position_message(position_resp)
     except httpx.HTTPStatusError as e:
         logger.error(f"{position_title} HTTP错误: {e}")
@@ -198,6 +280,6 @@ async def get_position_func(bot: Bot, ev: Event):
         return await bot.send(UID_HINT)
 
     logger.info(f"[Beyond] [位置] UID: {uid}")
-    result = await get_endfield_position(str(uid))
+    result = await get_endfield_position(str(uid), bot=bot)
     await bot.send(result)
     return None
