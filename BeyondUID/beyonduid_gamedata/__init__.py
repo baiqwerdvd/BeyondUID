@@ -99,6 +99,14 @@ class TableCfg:
         return cls._load_raw_table("WorldEnergyPointGroupTable", "WorldEnergyPointGroupTable.json")
 
     @classmethod
+    def MapIdTable(cls) -> dict[str, dict[str, Any]]:
+        return cls._load_raw_table("MapIdTable", "MapIdTable.json")
+
+    @classmethod
+    def LevelDescTable(cls) -> dict[str, dict[str, Any]]:
+        return cls._load_raw_table("LevelDescTable", "LevelDescTable.json")
+
+    @classmethod
     def reload(cls) -> None:
         from .i18n_text import clear_i18n_text_cache
 
