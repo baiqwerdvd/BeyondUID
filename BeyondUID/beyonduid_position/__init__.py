@@ -153,18 +153,24 @@ async def agree_position_policy(
     role_id: str,
     server_id: str = "1",
 ) -> EndfieldCommonResponse:
-    query = f"roleId={role_id}&serverId={server_id}"
-    url = f"{ENDFIELD_POSITION_AGREE_POLICY_URL}?{query}"
+    payload = {
+        "roleId": role_id,
+        "serverId": server_id,
+    }
     headers = _get_web_headers(
-        url=url,
-        method="GET",
-        body=None,
+        url=ENDFIELD_POSITION_AGREE_POLICY_URL,
+        method="POST",
+        body=payload,
         sign_token=client._token,
         cred=client._cred,
         device_id=client._device_id,
     )
 
-    response = await client._http.get(url, headers=headers)
+    response = await client._http.post(
+        ENDFIELD_POSITION_AGREE_POLICY_URL,
+        headers=headers,
+        json=payload,
+    )
     response.raise_for_status()
     return EndfieldCommonResponse.model_validate_json(response.content)
 
