@@ -145,7 +145,7 @@ async def get_position_info(
 
     response = await client._http.get(url, headers=headers)
     response.raise_for_status()
-    logger.debug(response)
+    logger.debug(response.content)
     return EndfieldPositionResponse.model_validate_json(response.content)
 
 
