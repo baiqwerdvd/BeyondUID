@@ -26,6 +26,61 @@ if sys.version_info >= (3, 11):
 else:
     from async_timeout import timeout
 
+beyond_user_info = SV("终末地用户信息")
+
+
+@beyond_user_info.on_command(
+    (
+        "绑定uid",
+        "绑定UID",
+        "切换uid",
+        "切换UID",
+        "删除uid",
+        "删除UID",
+        "解绑uid",
+        "解绑UID",
+    )
+)
+async def send_link_uid_msg(bot: Bot, ev: Event):
+    logger.info("byd开始执行[绑定/切换/解绑用户信息]")
+    qid = ev.user_id
+    logger.info(f"byd[绑定/切换/解绑]UserID: {qid}")
+
+    uid = ev.text.strip()
+    if uid and not uid.isdigit():
+        return await bot.send("你输入了错误的格式!")
+
+    if "绑定" in ev.command:
+        data = await BeyondBind.insert_uid(
+            qid, ev.bot_id, uid, ev.group_id,
+        )
+        if data == 0:
+            return await bot.send(f"✅[终末地]绑定UID{uid}成功!")
+        elif data == -1:
+            return await bot.send(f"❌UID{uid}的位数不正确!")
+        elif data == -2:
+            return await bot.send(f"❌UID{uid}已经绑定过了!")
+        elif data == -3:
+            return await bot.send("❌你输入了错误的格式!")
+    elif "切换" in ev.command:
+        data = await BeyondBind.switch_uid_by_game(qid, ev.bot_id, uid)
+        if data == 0:
+            new_uid = await BeyondBind.get_uid_by_game(qid, ev.bot_id)
+            return await bot.send(f"✅[终末地]切换UID成功！当前UID为{new_uid}")
+        elif data == -1:
+            return await bot.send("❌[终末地]不存在绑定记录！")
+        elif data == -2:
+            return await bot.send(f"❌[终末地]UID{uid}不在绑定列表中！")
+        elif data == -3:
+            return await bot.send("❌[终末地]请绑定两个以上UID再进行切换!")
+    else:
+        data = await BeyondBind.delete_uid(qid, ev.bot_id, uid)
+        if data == 0:
+            return await bot.send(f"✅[终末地]删除UID{uid}成功!")
+        elif data == -1:
+            return await bot.send(f"❌[终末地]该UID{uid}不在已绑定列表中!")
+
+
 beyond_scan_login = SV("扫码登录")
 
 
