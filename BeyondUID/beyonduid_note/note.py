@@ -113,14 +113,14 @@ async def get_daily_info(platform_roleid: str) -> str:
 
         # 构造文字信息
         lines = [
-            f"{'=' * 20}",
-            f"📊 终末地每日信息",
-            f"{'=' * 20}",
-            f"",
+            f"{'=' * 10}",
+            "📊 终末地每日信息",
+            f"{'=' * 10}",
+            "",
             f"🎖️ 战令等级: {stat.bp.current}/{stat.bp.total}",
             f"📋 每日活跃: {stat.dailyMission.current}/{stat.dailyMission.total}",
             f"📅 周常任务: {stat.weeklyMission.current}/{stat.weeklyMission.total}",
-            f"⚔️ 副本挑战: {stat.dungeon.current}次 (累计{stat.dungeon.total}次)",
+            f"⚔️ 体力回复: {stat.dungeon.current}/{stat.dungeon.total}",
             f"✅ 今日签到: {'已签到' if stat.signIn else '未签到'}",
         ]
 
