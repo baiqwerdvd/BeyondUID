@@ -14,7 +14,7 @@ class CharacterGachaPoolType(Enum):
 class GachaCharPoolData(BaseModel):
     color: str
     cumulativeRewardIds: list[str]
-    desc: I18nText
+    desc: I18nText | None = None
     id: str
     intervalAutoRewardIds: list[str]
     mailBannerImage: str
@@ -30,5 +30,5 @@ class GachaCharPoolData(BaseModel):
     trialActivityJumpId: str
     type: str
     uiPrefab: str
-    upCharDesc: I18nText
+    upCharDesc: I18nText | None = None
     upCharIds: list[str]
