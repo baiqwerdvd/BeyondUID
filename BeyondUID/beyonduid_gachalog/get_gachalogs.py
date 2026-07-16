@@ -2,7 +2,7 @@ import asyncio
 import json
 import time
 from pathlib import Path
-from typing import TypeVar
+from typing import Literal, TypeVar
 
 import httpx
 from gsuid_core.bot import Bot
@@ -18,6 +18,7 @@ from ..beyonduid_gachalog.model import (
     CharacterGachaPoolType,
     CharRecordItem,
     EFResponse,
+    GiftRecordItem,
     GachaPoolExport,
     GachaRecordList,
     PoolExportInfo,
@@ -27,6 +28,7 @@ from ..utils.database.models import BeyondUser
 from ..utils.resource.RESOURCE_PATH import PLAYER_PATH
 
 T = TypeVar("T", bound=BaseGachaRecordItem)
+GACHA_EXPORT_VERSION = "v1.1"
 
 
 async def get_u8_token(
@@ -90,14 +92,35 @@ def merge_records(
     return merged, new_count
 
 
+def merge_gift_records(
+    existing: list[GiftRecordItem],
+    new_records: list[GiftRecordItem],
+) -> tuple[list[GiftRecordItem], int]:
+    """Merge gift events by their source, pool and server-assigned sequence ID."""
+    existing_keys = {(record.source, record.poolId, record.seqId) for record in existing}
+    new_count = 0
+    merged = list(existing)
+
+    for record in new_records:
+        key = (record.source, record.poolId, record.seqId)
+        if key not in existing_keys:
+            merged.append(record)
+            existing_keys.add(key)
+            new_count += 1
+
+    merged.sort(key=lambda x: (int(x.gachaTs), int(x.seqId)), reverse=True)
+    return merged, new_count
+
+
 async def fetch_record(
     url: str,
     http_client: httpx.AsyncClient,
     u8_token: str,
     item_type: type[T],
+    record_source: Literal["char", "weapon"],
     extra_params: dict[str, str] = {},
     existing_max_seq_id: int = 0,
-) -> list[T]:
+) -> tuple[list[T], list[GiftRecordItem]]:
     """
     拉取抽卡记录，支持增量拉取
     Args:
@@ -106,6 +129,7 @@ async def fetch_record(
     has_more = True
     seq_id = 0
     records: list[T] = []
+    gift_records: list[GiftRecordItem] = []
 
     while has_more:
         params = {
@@ -123,11 +147,23 @@ async def fetch_record(
         )
         response.raise_for_status()
 
-        gacha_record_list = EFResponse[GachaRecordList[item_type]].model_validate(response.json()).data
+        gacha_record_list = EFResponse[GachaRecordList].model_validate(response.json()).data
 
         # 检查是否遇到已存在的记录，如果是则提前终止
         should_stop = False
-        for record in gacha_record_list.list:
+        for event in gacha_record_list.list:
+            if event.kind != "draw":
+                gift_record = GiftRecordItem.model_validate(
+                    {**event.model_dump(), "source": record_source}
+                )
+                gift_records.append(gift_record)
+                logger.debug(
+                    f"Captured non-draw gacha event: kind={event.kind}, "
+                    f"name={event.nameText}, pool={event.poolId}, seqId={event.seqId}"
+                )
+                continue
+
+            record = item_type.model_validate(event.model_dump())
             if int(record.seqId) <= existing_max_seq_id:
                 should_stop = True
                 break
@@ -144,7 +180,7 @@ async def fetch_record(
             break
         await asyncio.sleep(0.1)
 
-    return records
+    return records, gift_records
 
 
 async def fetch_full_record(uid: str, platform_roleid: str, bot: Bot, ev: Event):
@@ -180,43 +216,55 @@ async def fetch_full_record(uid: str, platform_roleid: str, bot: Bot, ev: Event)
     existing_data = load_existing_gacha_data(export_file)
     existing_char_list: list[CharRecordItem] = []
     existing_weapon_list: list[WeaponRecordItem] = []
+    existing_gift_list: list[GiftRecordItem] = []
+    needs_gift_backfill = False
     if existing_data:
         existing_char_list = existing_data.charList
         existing_weapon_list = existing_data.weaponList
+        existing_gift_list = existing_data.giftList
+        needs_gift_backfill = existing_data.info.version != GACHA_EXPORT_VERSION
         logger.debug(
             f"Loaded existing data: {len(existing_char_list)} char records, "
-            f"{len(existing_weapon_list)} weapon records"
+            f"{len(existing_weapon_list)} weapon records, "
+            f"{len(existing_gift_list)} gift records"
         )
+        if needs_gift_backfill:
+            logger.info("Old gacha export detected; fetching full history to backfill gift events")
 
     # 获取现有记录中最大的 seqId
-    char_max_seq_id = get_max_seq_id(existing_char_list)
-    weapon_max_seq_id = get_max_seq_id(existing_weapon_list)
+    char_max_seq_id = 0 if needs_gift_backfill else get_max_seq_id(existing_char_list)
+    weapon_max_seq_id = 0 if needs_gift_backfill else get_max_seq_id(existing_weapon_list)
     logger.debug(f"Existing max seqId - char: {char_max_seq_id}, weapon: {weapon_max_seq_id}")
 
     http_client = httpx.AsyncClient()
     try:
         # 增量拉取角色记录
         fetch_record_char: list[CharRecordItem] = []
+        fetch_gift_records: list[GiftRecordItem] = []
         for pool_type in CharacterGachaPoolType:
-            list_records = await fetch_record(
+            list_records, gift_records = await fetch_record(
                 "https://ef-webview.hypergryph.com/api/record/char",
                 http_client,
                 u8_token,
                 CharRecordItem,
+                "char",
                 {"pool_type": pool_type.value},
                 existing_max_seq_id=char_max_seq_id,
             )
             fetch_record_char.extend(list_records)
+            fetch_gift_records.extend(gift_records)
             logger.debug(f"New char records fetched for pool {pool_type.value}: {len(list_records)}")
 
         # 增量拉取武器记录
-        fetch_record_weapon = await fetch_record(
+        fetch_record_weapon, weapon_gift_records = await fetch_record(
             "https://ef-webview.hypergryph.com/api/record/weapon",
             http_client,
             u8_token,
             WeaponRecordItem,
+            "weapon",
             existing_max_seq_id=weapon_max_seq_id,
         )
+        fetch_gift_records.extend(weapon_gift_records)
         logger.debug(f"New weapon records fetched: {len(fetch_record_weapon)}")
     except Exception as e:
         logger.exception(e)
@@ -228,6 +276,7 @@ async def fetch_full_record(uid: str, platform_roleid: str, bot: Bot, ev: Event)
     # 合并记录
     merged_char_list, new_char_count = merge_records(existing_char_list, fetch_record_char)
     merged_weapon_list, new_weapon_count = merge_records(existing_weapon_list, fetch_record_weapon)
+    merged_gift_list, new_gift_count = merge_gift_records(existing_gift_list, fetch_gift_records)
 
     gacha_export = GachaPoolExport(
         info=PoolExportInfo(
@@ -235,10 +284,11 @@ async def fetch_full_record(uid: str, platform_roleid: str, bot: Bot, ev: Event)
             lang="zh-cn",
             timezone=8,
             exportTimestamp=int(time.time()),
-            version="v1.0",
+            version=GACHA_EXPORT_VERSION,
         ),
         charList=merged_char_list,
         weaponList=merged_weapon_list,
+        giftList=merged_gift_list,
     )
 
     with export_file.open("w", encoding="utf-8") as f:
@@ -251,12 +301,14 @@ async def fetch_full_record(uid: str, platform_roleid: str, bot: Bot, ev: Event)
 
     logger.info(
         f"Gacha records updated - "
-        f"Total: {len(merged_char_list)} char, {len(merged_weapon_list)} weapon | "
-        f"New: {new_char_count} char, {new_weapon_count} weapon"
+        f"Total: {len(merged_char_list)} char, {len(merged_weapon_list)} weapon, "
+        f"{len(merged_gift_list)} gift | "
+        f"New: {new_char_count} char, {new_weapon_count} weapon, {new_gift_count} gift"
     )
 
     await bot.send(
         f"UID {platform_roleid}抽卡记录已更新！\n"
         f"新增角色记录：{new_char_count} 条\n"
-        f"新增武器记录：{new_weapon_count} 条"
+        f"新增武器记录：{new_weapon_count} 条\n"
+        f"新增赠礼记录：{new_gift_count} 条"
     )

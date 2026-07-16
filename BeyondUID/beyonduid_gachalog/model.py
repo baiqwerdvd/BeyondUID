@@ -1,7 +1,7 @@
 from enum import Enum
-from typing import Generic, TypeVar
+from typing import Generic, Literal, TypeVar
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class BaseGachaRecordItem(BaseModel):
@@ -33,13 +33,31 @@ class WeaponRecordItem(BaseGachaRecordItem):
 
 
 T = TypeVar("T")
-V = TypeVar("V", bound=BaseGachaRecordItem)
 
 
-class GachaRecordList(BaseModel, Generic[V]):
+class GachaRecordEvent(BaseModel):
+    """Common fields shared by draw and non-draw gacha events."""
+
+    model_config = ConfigDict(extra="allow")
+
+    kind: str = "draw"
+    nameText: str | None = None
+    poolId: str
+    poolName: str
+    gachaTs: str
+    seqId: str
+
+
+class GiftRecordItem(GachaRecordEvent):
+    """Non-draw reward event stored separately from draw records."""
+
+    source: Literal["char", "weapon"]
+
+
+class GachaRecordList(BaseModel):
     """Gacha record list model."""
 
-    list: list[V]
+    list: list[GachaRecordEvent]
     hasMore: bool
 
 
@@ -51,6 +69,7 @@ class EFResponse(BaseModel, Generic[T]):
 
 class CharacterGachaPoolType(Enum):
     Special = "E_CharacterGachaPoolType_Special"
+    Joint = "E_CharacterGachaPoolType_Joint"
     Beginner = "E_CharacterGachaPoolType_Beginner"
     Standard = "E_CharacterGachaPoolType_Standard"
 
@@ -99,6 +118,7 @@ class GachaPoolExport(BaseModel):
     info: PoolExportInfo
     charList: list[CharRecordItem]
     weaponList: list[WeaponRecordItem]
+    giftList: list[GiftRecordItem] = Field(default_factory=list)
 
 
 class WeaponGachaPoolItem(BaseModel):
