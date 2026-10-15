@@ -118,6 +118,14 @@
         "need_admin": true
       },
       {
+        "name": "资源更新",
+        "desc": "下载缺失或有变动的资源，数据表有更新时自动重新加载",
+        "eg": "资源更新",
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": true
+      },
+      {
         "name": "订阅版本更新",
         "desc": "订阅版本更新",
         "eg": "订阅版本更新",

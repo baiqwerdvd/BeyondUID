@@ -3,16 +3,17 @@ from gsuid_core.logger import logger
 from gsuid_core.models import Event
 from gsuid_core.sv import SV
 
-from ..utils.resource.download_all_resource import download_all_resource
+from ..utils.resource.download_all_resource import download_all_resource, is_downloading
 
 sv_download_config = SV("byd资源下载", pm=1)
 
 
-@sv_download_config.on_fullmatch("下载全部资源")
+@sv_download_config.on_fullmatch(("下载全部资源", "资源更新"))
 async def send_download_resource_msg(bot: Bot, ev: Event):
-    await bot.send("[beyond] 正在开始下载~可能需要较久的时间！请勿重复执行！")
-    await download_all_resource()
-    await bot.send("[beyond] 资源下载完成！")
+    if is_downloading():
+        return await bot.send("[beyond] 正在下载中，请勿重复触发")
+    await bot.send("[beyond] 正在开始下载~可能需要较久的时间！")
+    await bot.send(f"[beyond] {await download_all_resource()}")
 
 
 async def startup():
