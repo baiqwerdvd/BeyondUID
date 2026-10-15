@@ -7,6 +7,28 @@ from ..utils.resource.RESOURCE_PATH import TABLE_CFG_PATH
 from .gacha_char_pool_data import GachaCharPoolData
 from .gacha_weapon_pool_data import GachaWeaponPoolData
 
+# 插件只读这些表，资源下载和镜像同步脚本都按这份清单拉取；新增表时要加进来
+TABLE_FILES = (
+    "CharWpnRecommendTable.json",
+    "CharWpnSkillRecommendTable.json",
+    "CharacterTable.json",
+    "DomainDataTable.json",
+    "GachaCharPoolTable.json",
+    "GachaPoolCharPresetTable.json",
+    "GachaPoolWeaponPresetTable.json",
+    "GachaWeaponPoolTable.json",
+    "GemPresetTable.json",
+    "GemTable.json",
+    "I18nTextTable_CN.json",
+    "ItemTable.json",
+    "LevelDescTable.json",
+    "MapIdTable.json",
+    "RewardTable.json",
+    "WeaponBasicTable.json",
+    "WorldEnergyPointGroupTable.json",
+    "WorldEnergyPointTable.json",
+)
+
 
 class GachaCharPoolTable(BaseModel):
     data: dict[str, GachaCharPoolData]
@@ -124,6 +146,7 @@ from .weapon_gem_info import WeaponGemInfoTable  # noqa: E402
 from .weapon_gem_info import WeaponGemRecommendationData
 
 __all__ = [
+    "TABLE_FILES",
     "CharacterDetailData",
     "CharacterInfoTable",
     "GachaCharPoolTable",
