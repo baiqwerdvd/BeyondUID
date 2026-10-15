@@ -4,9 +4,10 @@ from datetime import datetime
 from typing import Any, TypeVar, get_args
 from uuid import UUID, uuid4
 
+import aiofiles
 import aiohttp
 from gsuid_core.data_store import get_res_path
-from gsuid_core.logger import aiofiles, logger
+from gsuid_core.logger import logger
 from pydantic import BaseModel, ValidationError
 
 from .config import (

@@ -1,8 +1,7 @@
 from gsuid_core.bot import Bot
-from gsuid_core.handler import gs_subscribe
 from gsuid_core.logger import logger
 from gsuid_core.models import Event
-from gsuid_core.subscribe import Subscribe
+from gsuid_core.subscribe import Subscribe, gs_subscribe
 from gsuid_core.sv import SV
 
 from ..utils.database.models import BeyondBind
