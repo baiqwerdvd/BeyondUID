@@ -17,9 +17,7 @@ dependencies = [
 requires-python = ">=3.10,<4.0"
 readme = "README.md"
 license = { text = "GPL-3.0-or-later" }
-
-[tool.gscore]
-auto_update_dep = ["sklandcore>=0.0.2"]
+gscore_auto_upgrade_dep = ["sklandcore>=0.0.2"]
 
 [tool.ruff]
 line-length = 108
