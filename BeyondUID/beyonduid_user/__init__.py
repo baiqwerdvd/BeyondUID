@@ -162,36 +162,35 @@ async def on_beyond_scan_login(bot: Bot, ev: Event):
     if len(binding_list_data.list) == 0 or len(binding_list_data.list[0].bindingList) == 0:
         await bot.send("扫码登录成功，但该Hypergryph账号下没有绑定任何Endfield账号。")
         return
-    if len(binding_list_data.list[0].bindingList[0].roles) > 1:
+    binding = binding_list_data.list[0].bindingList[0]
+    uid: str = binding.uid
+    role_ids = [role.roleId for role in binding.roles]
+    if not role_ids:
+        await bot.send("扫码登录成功，但该Endfield账号UID下没有任何游戏角色。")
+        return
+
+    platform_roleid = role_ids[0]
+    if len(role_ids) > 1:
         await bot.send(
-            "扫码登录成功，但检测到该Endfield账号UID下有多个游戏角色，请指定uid\n"
-            + ", ".join(role.roleId for role in binding_list_data.list[0].bindingList[0].roles),
+            "扫码登录成功，但检测到该Endfield账号UID下有多个游戏角色，请回复要绑定的角色ID：\n"
+            + "\n".join(
+                f"{role.roleId}（{role.serverName} {role.nickName} Lv.{role.level}）"
+                for role in binding.roles
+            ),
         )
         try:
             async with timeout(60):
                 while True:
                     resp = await bot.receive_mutiply_resp()
-                    if resp is not None:
-                        text = resp.text
-                        if text in [role.roleId for role in binding_list_data.list[0].bindingList[0].roles]:
-                            uid = text
-                            break
-                        else:
-                            await bot.send("您输入的UID不在可选列表中，请重新输入。")
+                    if resp is None:
+                        continue
+                    if resp.text.strip() in role_ids:
+                        platform_roleid = resp.text.strip()
+                        break
+                    await bot.send("您输入的角色ID不在可选列表中，请重新输入。")
         except asyncio.TimeoutError:
-            await bot.send("指定UID超时，登录流程终止。")
+            await bot.send("指定角色超时，登录流程终止。")
             return
-    uid: str = binding_list_data.list[0].bindingList[0].uid
-    roles = binding_list_data.list[0].bindingList[0].roles
-    if len(roles) == 1:
-        platform_roleid = roles[0].roleId
-    elif len(roles) == 0:
-        await bot.send("扫码登录成功，但该Endfield账号UID下没有任何游戏角色。")
-        return
-    else:
-        logger.error(binding_list_data)
-        await bot.send("发生未知错误，请重试。")
-        return
 
     # 二次确认绑定
     msgs = [
@@ -223,6 +222,9 @@ async def on_beyond_scan_login(bot: Bot, ev: Event):
         user_id=ev.user_id,
         uid=platform_roleid,
     )
+    # insert_uid 对已有绑定只会追加到末尾，刚登录的角色要手动切成当前角色
+    if await BeyondBind.get_uid_by_game(ev.user_id, bot.bot_id) != platform_roleid:
+        await BeyondBind.switch_uid_by_game(ev.user_id, bot.bot_id, platform_roleid)
     await BeyondUser.insert_or_update_user(
         bot_id=bot.bot_id,
         user_id=ev.user_id,
@@ -234,4 +236,4 @@ async def on_beyond_scan_login(bot: Bot, ev: Event):
         platform="Windows",
     )
 
-    await bot.send(f"扫码登录成功，Endfield账号UID：{uid}")
+    await bot.send(f"扫码登录成功，Endfield账号UID：{uid}，当前角色ID：{platform_roleid}")

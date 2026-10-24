@@ -37,22 +37,6 @@ class BeyondUser(User, table=True):
 
     @classmethod
     @with_session
-    async def get_uid_and_platform_roleid_by_game(
-        cls: type[T_BeyondUser],
-        session: AsyncSession,
-        user_id: str,
-        bot_id: str,
-    ) -> tuple[str | None, str | None] | None:
-        obj = await cls.base_select_data(
-            bot_id=bot_id,
-            user_id=user_id,
-        )
-        if obj:
-            return obj.uid, obj.platform_roleid
-        return None
-
-    @classmethod
-    @with_session
     async def get_user_by_roleid(
         cls: type[T_BeyondUser],
         session: AsyncSession,
@@ -94,12 +78,14 @@ class BeyondUser(User, table=True):
         device_json: str = "",
         platform: str = "Windows",
     ) -> T_BeyondUser:
+        # 一个账号下可能有多个角色，按角色区分行，否则后登录的角色会覆盖前一个
         obj = await cls.base_select_data(
             bot_id=bot_id,
             user_id=user_id,
-            uid=uid,
+            platform_roleid=platform_roleid,
         )
         if obj:
+            obj.uid = uid
             obj.hgtoken = hgtoken
             obj.device_id = device_id
             obj.device_token = device_token
