@@ -10,6 +10,7 @@ from gsuid_core.logger import logger
 from gsuid_core.models import Event
 from sklandcore.byd_client import BeyondClient
 from sklandcore.constants import OAuth2AppCode
+from sklandcore.exceptions import AuthenticationError, NetworkError
 from sklandcore.models.auth import GrantCodeDataType1BindingAPI
 from sklandcore.platform import HypergryphDeviceWindows
 
@@ -25,6 +26,7 @@ from ..beyonduid_gachalog.model import (
     WeaponRecordItem,
 )
 from ..utils.database.models import BeyondUser
+from ..utils.error_reply import prefix
 from ..utils.resource.RESOURCE_PATH import PLAYER_PATH
 
 T = TypeVar("T", bound=BaseGachaRecordItem)
@@ -50,6 +52,12 @@ async def get_u8_token(
         token=binding_grant_data.token,
     )
     return binding_data.token
+
+
+def is_token_expired(e: NetworkError) -> bool:
+    # sklandcore 把 401 包成 NetworkError，状态码只在 __cause__ 里
+    cause = e.__cause__
+    return isinstance(cause, httpx.HTTPStatusError) and cause.response.status_code == 401
 
 
 def load_existing_gacha_data(export_file: Path) -> GachaPoolExport | None:
@@ -183,15 +191,19 @@ async def fetch_record(
     return records, gift_records
 
 
-async def fetch_full_record(uid: str, platform_roleid: str, bot: Bot, ev: Event):
+async def fetch_full_record(platform_roleid: str, bot: Bot, ev: Event):
     user = await BeyondUser.get_user_by_roleid(
         platform_roleid=platform_roleid,
         user_id=ev.user_id,
         bot_id=bot.bot_id,
     )
     if user is None:
-        return await bot.send("未找到用户设备信息，请重新绑定账号。")
-    device_token, device, hg_token = (
+        return await bot.send(
+            f"UID{platform_roleid}还没有扫码登录，请使用[{prefix}扫码登录]登录后再刷新抽卡记录。"
+        )
+    # 对外只显示角色ID；uid 是鹰角账号侧的，只用来换 u8 token
+    uid, device_token, device, hg_token = (
+        user.uid,
         user.device_token,
         HypergryphDeviceWindows.model_validate_json(user.device_json),
         user.hgtoken,
@@ -200,12 +212,25 @@ async def fetch_full_record(uid: str, platform_roleid: str, bot: Bot, ev: Event)
     beyond_client = BeyondClient(device)
     await beyond_client.initialize()
 
-    u8_token = await get_u8_token(
-        client=beyond_client,
-        uid=uid,
-        hg_token=hg_token,
-        device_token=device_token,
-    )
+    relogin_hint = f"UID{platform_roleid}登录已失效，请使用[{prefix}扫码登录]重新登录后再刷新抽卡记录。"
+    try:
+        u8_token = await get_u8_token(
+            client=beyond_client,
+            uid=uid,
+            hg_token=hg_token,
+            device_token=device_token,
+        )
+    except AuthenticationError as e:
+        logger.warning(f"[byd刷新抽卡记录] UID{platform_roleid} 获取u8 token被拒绝: {e}")
+        return await bot.send(relogin_hint)
+    except NetworkError as e:
+        if is_token_expired(e):
+            logger.warning(f"[byd刷新抽卡记录] UID{platform_roleid} hgtoken已过期: {e}")
+            return await bot.send(relogin_hint)
+        logger.exception(e)
+        return await bot.send("抽卡记录获取失败，鹰角服务器请求出错，请稍后重试。")
+
+    await bot.send(f"UID{platform_roleid}开始执行[刷新抽卡记录],需要一定时间...请勿重复触发！")
 
     # 加载现有数据
     path = PLAYER_PATH / platform_roleid
@@ -307,7 +332,7 @@ async def fetch_full_record(uid: str, platform_roleid: str, bot: Bot, ev: Event)
     )
 
     await bot.send(
-        f"UID {platform_roleid}抽卡记录已更新！\n"
+        f"UID{platform_roleid}抽卡记录已更新！\n"
         f"新增角色记录：{new_char_count} 条\n"
         f"新增武器记录：{new_weapon_count} 条\n"
         f"新增赠礼记录：{new_gift_count} 条"
