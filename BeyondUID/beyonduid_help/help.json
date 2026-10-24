@@ -17,7 +17,7 @@
     "data": [
       {
         "name": "刷新抽卡记录",
-        "desc": "先刷新抽卡记录",
+        "desc": "拉取最新的抽卡记录",
         "eg": "刷新抽卡记录",
         "need_ck": true,
         "need_sk": false,
@@ -25,7 +25,7 @@
       },
       {
         "name": "抽卡记录",
-        "desc": "查询抽卡记录",
+        "desc": "查询抽卡记录，首次查询自动拉取",
         "eg": "抽卡记录",
         "need_ck": true,
         "need_sk": false,

@@ -6,7 +6,7 @@ from gsuid_core.sv import SV
 from ..utils.database.models import BeyondBind
 
 from .draw_img import draw_gachalogs_img
-from .get_gachalogs import fetch_full_record
+from .get_gachalogs import fetch_full_record, get_gacha_log_file
 
 sv_gacha_log = SV("byd抽卡记录")
 
@@ -17,6 +17,10 @@ async def send_gacha_log_card_info(bot: Bot, ev: Event):
     uid = await BeyondBind.get_uid_by_game(ev.user_id, ev.bot_id)
     if uid is None:
         return await bot.send("请先绑定终末地账号，使用指令：byd扫码登录 进行绑定")
+    # 第一次查还没有记录文件，直接拉一次，不让用户再去发刷新命令
+    if not get_gacha_log_file(uid).exists():
+        if not await fetch_full_record(uid, bot, ev, first_fetch=True):
+            return
     await draw_gachalogs_img(uid, bot, ev)
 
 

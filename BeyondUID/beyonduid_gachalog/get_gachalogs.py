@@ -60,6 +60,10 @@ def is_token_expired(e: NetworkError) -> bool:
     return isinstance(cause, httpx.HTTPStatusError) and cause.response.status_code == 401
 
 
+def get_gacha_log_file(platform_roleid: str) -> Path:
+    return PLAYER_PATH / platform_roleid / "gacha_logs.json"
+
+
 def load_existing_gacha_data(export_file: Path) -> GachaPoolExport | None:
     if not export_file.exists():
         return None
@@ -191,16 +195,16 @@ async def fetch_record(
     return records, gift_records
 
 
-async def fetch_full_record(platform_roleid: str, bot: Bot, ev: Event):
+async def fetch_full_record(platform_roleid: str, bot: Bot, ev: Event, first_fetch: bool = False) -> bool:
+    """拉取并保存抽卡记录，成功返回 True；失败时已回复用户原因"""
     user = await BeyondUser.get_user_by_roleid(
         platform_roleid=platform_roleid,
         user_id=ev.user_id,
         bot_id=bot.bot_id,
     )
     if user is None:
-        return await bot.send(
-            f"UID{platform_roleid}还没有扫码登录，请使用[{prefix}扫码登录]登录后再刷新抽卡记录。"
-        )
+        await bot.send(f"UID{platform_roleid}还没有扫码登录，请使用[{prefix}扫码登录]登录后再试。")
+        return False
     # 对外只显示角色ID；uid 是鹰角账号侧的，只用来换 u8 token
     uid, device_token, device, hg_token = (
         user.uid,
@@ -212,7 +216,7 @@ async def fetch_full_record(platform_roleid: str, bot: Bot, ev: Event):
     beyond_client = BeyondClient(device)
     await beyond_client.initialize()
 
-    relogin_hint = f"UID{platform_roleid}登录已失效，请使用[{prefix}扫码登录]重新登录后再刷新抽卡记录。"
+    relogin_hint = f"UID{platform_roleid}登录已失效，请使用[{prefix}扫码登录]重新登录后再试。"
     try:
         u8_token = await get_u8_token(
             client=beyond_client,
@@ -222,21 +226,25 @@ async def fetch_full_record(platform_roleid: str, bot: Bot, ev: Event):
         )
     except AuthenticationError as e:
         logger.warning(f"[byd刷新抽卡记录] UID{platform_roleid} 获取u8 token被拒绝: {e}")
-        return await bot.send(relogin_hint)
+        await bot.send(relogin_hint)
+        return False
     except NetworkError as e:
         if is_token_expired(e):
             logger.warning(f"[byd刷新抽卡记录] UID{platform_roleid} hgtoken已过期: {e}")
-            return await bot.send(relogin_hint)
+            await bot.send(relogin_hint)
+            return False
         logger.exception(e)
-        return await bot.send("抽卡记录获取失败，鹰角服务器请求出错，请稍后重试。")
+        await bot.send("抽卡记录获取失败，鹰角服务器请求出错，请稍后重试。")
+        return False
 
-    await bot.send(f"UID{platform_roleid}开始执行[刷新抽卡记录],需要一定时间...请勿重复触发！")
+    if first_fetch:
+        await bot.send(f"UID{platform_roleid}还没有抽卡记录，正在首次获取，需要一定时间...请勿重复触发！")
+    else:
+        await bot.send(f"UID{platform_roleid}开始执行[刷新抽卡记录],需要一定时间...请勿重复触发！")
 
     # 加载现有数据
-    path = PLAYER_PATH / platform_roleid
-    if not path.exists():
-        path.mkdir(parents=True, exist_ok=True)
-    export_file = path / "gacha_logs.json"
+    export_file = get_gacha_log_file(platform_roleid)
+    export_file.parent.mkdir(parents=True, exist_ok=True)
 
     existing_data = load_existing_gacha_data(export_file)
     existing_char_list: list[CharRecordItem] = []
@@ -294,7 +302,7 @@ async def fetch_full_record(platform_roleid: str, bot: Bot, ev: Event):
     except Exception as e:
         logger.exception(e)
         await bot.send("抽卡记录获取失败，请稍后重试或重新登陆账号再试。")
-        return
+        return False
     finally:
         await http_client.aclose()
 
@@ -331,9 +339,12 @@ async def fetch_full_record(platform_roleid: str, bot: Bot, ev: Event):
         f"New: {new_char_count} char, {new_weapon_count} weapon, {new_gift_count} gift"
     )
 
-    await bot.send(
-        f"UID{platform_roleid}抽卡记录已更新！\n"
-        f"新增角色记录：{new_char_count} 条\n"
-        f"新增武器记录：{new_weapon_count} 条\n"
-        f"新增赠礼记录：{new_gift_count} 条"
-    )
+    # 首次获取后紧接着出图，新增条数就不单独发了
+    if not first_fetch:
+        await bot.send(
+            f"UID{platform_roleid}抽卡记录已更新！\n"
+            f"新增角色记录：{new_char_count} 条\n"
+            f"新增武器记录：{new_weapon_count} 条\n"
+            f"新增赠礼记录：{new_gift_count} 条"
+        )
+    return True
